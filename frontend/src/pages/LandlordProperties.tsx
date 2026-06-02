@@ -1,8 +1,11 @@
+import { Link } from 'react-router-dom';
+import { ArrowUpRight, BedDouble, CircleDollarSign, Home, Plus } from 'lucide-react';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
+import { featuredProperties, formatUsdc } from '@/data/properties';
 
-const LANDLORD_SIDEBAR_ITEMS = [
+const landlordItems = [
     { icon: 'dashboard', label: 'Overview', href: '/landlord/dashboard' },
-    { icon: 'home_work', label: 'Properties', href: '/landlord/properties' },
+    { icon: 'home_work', label: 'Properties', href: '/landlord/properties', active: true },
     { icon: 'add', label: 'Add Property', href: '/landlord/properties/new' },
     { icon: 'description', label: 'Applications', href: '/landlord/applications' },
     { icon: 'people', label: 'Tenants', href: '/landlord/tenants' },
@@ -11,29 +14,70 @@ const LANDLORD_SIDEBAR_ITEMS = [
 
 export default function LandlordProperties() {
     return (
-        <div className="flex min-h-screen bg-background">
-            <Sidebar items={LANDLORD_SIDEBAR_ITEMS} user={{ name: 'O. Otieno', address: 'GA5...9KXW' }} />
-            
-            <main className="flex-1 md:ml-64 p-lg">
-                <header className="mb-8">
-                    <h1 className="font-display-lg">Properties</h1>
-                    <p className="text-on-surface-variant">Manage your rental properties.</p>
-                </header>
+        <div className="min-h-screen bg-background md:pl-72">
+            <Sidebar items={landlordItems} user={{ name: 'O. Otieno', address: 'GA5...9KXW' }} />
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-lg">
-                    <div className="card card-shadow-md p-lg hover:card-shadow-lg transition-shadow cursor-pointer">
-                        <img className="w-full h-48 object-cover rounded-lg mb-4" src="https://images.unsplash.com/photo-1520603089958-2f0d9b7e5c6b?w=400&h=200&fit=crop" alt="Property" />
-                        <h3 className="font-headline-md mb-2">Kilimani Apartment</h3>
-                        <p className="text-on-surface-variant mb-4">2 Bed • 1 Bath • KSh 85,000/mo</p>
-                        <div className="flex justify-between items-center">
-                            <span className="text-success bg-success/10 px-3 py-1 rounded-full text-label-sm">Occupied</span>
-                            <button className="text-primary font-button-text">View Details</button>
+            <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <header className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                        <div>
+                            <p className="section-kicker">Portfolio</p>
+                            <h1 className="dashboard-title mt-3">Properties</h1>
+                            <p className="mt-2 text-muted-foreground">Manage listings, rent terms, unit availability, and escrow readiness.</p>
                         </div>
+                        <Link to="/landlord/properties/new" className="primary-button w-fit">
+                            <Plus className="h-4 w-4" />
+                            Add property
+                        </Link>
+                    </header>
+
+                    <div className="grid gap-6 lg:grid-cols-3">
+                        {featuredProperties.map((property) => (
+                            <article key={property.id} className="surface-card overflow-hidden">
+                                <div className="relative aspect-[4/3] overflow-hidden">
+                                    <img src={property.image} alt={property.title} className="h-full w-full object-cover" />
+                                    <span className="absolute left-3 top-3 rounded-full bg-white/94 px-3 py-1 text-xs font-bold text-primary">
+                                        {property.available ? 'Listed' : 'Paused'}
+                                    </span>
+                                </div>
+                                <div className="p-5">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h2 className="text-xl font-bold">{property.title}</h2>
+                                            <p className="text-sm text-muted-foreground">{property.neighborhood}, {property.city}</p>
+                                        </div>
+                                        <Link to={`/properties/${property.id}`} className="secondary-button px-3 py-2">
+                                            <ArrowUpRight className="h-4 w-4" />
+                                        </Link>
+                                    </div>
+
+                                    <div className="mt-5 grid grid-cols-3 gap-3 text-sm">
+                                        <div className="rounded-[8px] bg-muted p-3">
+                                            <Home className="mb-2 h-4 w-4 text-primary" />
+                                            <p className="font-bold">{property.unitType}</p>
+                                        </div>
+                                        <div className="rounded-[8px] bg-muted p-3">
+                                            <BedDouble className="mb-2 h-4 w-4 text-primary" />
+                                            <p className="font-bold">{property.beds} beds</p>
+                                        </div>
+                                        <div className="rounded-[8px] bg-muted p-3">
+                                            <CircleDollarSign className="mb-2 h-4 w-4 text-primary" />
+                                            <p className="font-bold">{formatUsdc(property.price)}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+                                        <span className="text-sm font-semibold text-muted-foreground">Escrow: {property.escrowState}</span>
+                                        <button className="font-bold text-primary">Manage</button>
+                                    </div>
+                                </div>
+                            </article>
+                        ))}
                     </div>
                 </div>
             </main>
 
-            <MobileNav items={LANDLORD_SIDEBAR_ITEMS} />
+            <MobileNav items={landlordItems} />
         </div>
     );
 }

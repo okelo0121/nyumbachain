@@ -13,16 +13,16 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-    primary: 'bg-primary-container text-on-primary-container hover:brightness-110',
-    secondary: 'bg-surface-variant text-on-surface border border-white/10 hover:bg-surface-bright',
-    ghost: 'bg-transparent text-on-surface hover:bg-white/5',
-    destructive: 'bg-error-container text-on-error-container hover:brightness-110',
+    primary: 'bg-primary text-primary-foreground shadow-[0_12px_28px_rgba(15,45,78,0.22)] hover:bg-[#123d68]',
+    secondary: 'bg-white text-foreground border border-border hover:border-primary/30 hover:shadow-sm',
+    ghost: 'bg-transparent text-foreground hover:bg-muted',
+    destructive: 'bg-error text-white hover:bg-error/90',
 };
 
 const sizeClasses: Record<Size, string> = {
-    sm: 'px-md py-sm text-button-text',
-    md: 'px-lg py-sm text-button-text',
-    lg: 'px-xl py-md text-button-text',
+    sm: 'px-4 py-2 text-button-text',
+    md: 'px-5 py-3 text-button-text',
+    lg: 'px-6 py-4 text-button-text',
 };
 
 export const Button = forwardRef<HTMLButtonElement, Props>(
@@ -32,7 +32,7 @@ export const Button = forwardRef<HTMLButtonElement, Props>(
                 ref={ref}
                 className={cn(
                     'inline-flex items-center justify-center gap-sm rounded-lg font-button-text',
-                    'active:scale-95 transition-all disabled:opacity-50 disabled:pointer-events-none',
+                    'active:scale-95 transition-all disabled:pointer-events-none disabled:opacity-50',
                     variantClasses[variant],
                     sizeClasses[size],
                     fullWidth && 'w-full',

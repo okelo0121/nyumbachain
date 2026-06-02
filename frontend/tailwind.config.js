@@ -1,106 +1,70 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   darkMode: ['class'],
-  content: [
-    './index.html',
-    './src/**/*.{ts,tsx,js,jsx}',
-  ],
+  content: ['./index.html', './src/**/*.{ts,tsx,js,jsx}'],
   theme: {
     container: {
       center: true,
       padding: '1rem',
       screens: {
-        '2xl': '1400px',
+        '2xl': '1440px',
       },
     },
     extend: {
       colors: {
-        border: '#E5E7EB',
-        input: '#E5E7EB',
-        ring: '#6D28D9',
-        background: '#FFFFFF',
-        foreground: '#111111',
+        border: 'rgb(var(--border) / <alpha-value>)',
+        input: 'rgb(var(--input) / <alpha-value>)',
+        ring: 'rgb(var(--ring) / <alpha-value>)',
+        background: 'rgb(var(--background) / <alpha-value>)',
+        foreground: 'rgb(var(--foreground) / <alpha-value>)',
         primary: {
-          DEFAULT: '#6D28D9',
-          foreground: '#FFFFFF',
+          DEFAULT: 'rgb(var(--primary) / <alpha-value>)',
+          foreground: 'rgb(var(--primary-foreground) / <alpha-value>)',
         },
         secondary: {
-          DEFAULT: '#6D28D9',
-          foreground: '#FFFFFF',
+          DEFAULT: 'rgb(var(--secondary) / <alpha-value>)',
+          foreground: 'rgb(var(--secondary-foreground) / <alpha-value>)',
         },
         destructive: {
-          DEFAULT: '#EF4444',
-          foreground: '#FFFFFF',
+          DEFAULT: 'rgb(var(--error) / <alpha-value>)',
+          foreground: '#ffffff',
         },
         muted: {
-          DEFAULT: '#FAFAFA',
-          foreground: '#6B7280',
+          DEFAULT: 'rgb(var(--muted) / <alpha-value>)',
+          foreground: 'rgb(var(--muted-foreground) / <alpha-value>)',
         },
         accent: {
-          DEFAULT: '#6D28D9',
-          foreground: '#FFFFFF',
+          DEFAULT: 'rgb(var(--secondary) / <alpha-value>)',
+          foreground: 'rgb(var(--secondary-foreground) / <alpha-value>)',
         },
         popover: {
-          DEFAULT: '#FFFFFF',
-          foreground: '#111111',
+          DEFAULT: 'rgb(var(--card) / <alpha-value>)',
+          foreground: 'rgb(var(--card-foreground) / <alpha-value>)',
         },
         card: {
-          DEFAULT: '#FFFFFF',
-          foreground: '#111111',
+          DEFAULT: 'rgb(var(--card) / <alpha-value>)',
+          foreground: 'rgb(var(--card-foreground) / <alpha-value>)',
         },
-        success: '#10B981',
-        warning: '#F59E0B',
-        error: '#EF4444',
-        surface: '#FAFAFA',
-        'surface-secondary': '#F3F4F6',
+        success: 'rgb(var(--success) / <alpha-value>)',
+        warning: 'rgb(var(--warning) / <alpha-value>)',
+        error: 'rgb(var(--error) / <alpha-value>)',
       },
-
       borderRadius: {
-        DEFAULT: '16px',
-        lg: '24px',
-        xl: '32px',
-        full: '9999px',
+        DEFAULT: '8px',
+        lg: '8px',
+        xl: '12px',
+        '2xl': '16px',
       },
-
-      spacing: {
-        xs: '4px',
-        sm: '8px',
-        md: '16px',
-        lg: '24px',
-        xl: '40px',
-        '2xl': '64px',
-        unit: '4px',
-        gutter: '24px',
-        'container-max': '1280px',
-        'px-sm': '8px',
-        'px-md': '16px',
-        'px-lg': '24px',
-        'px-xl': '40px',
-        'px-2xl': '64px',
-      },
-
       fontFamily: {
-        sans: ['Inter', 'system-ui', 'sans-serif'],
-        label: ['Inter', 'monospace'],
+        sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
       },
-
       fontSize: {
-        'label-sm': ['12px', { lineHeight: '16px', letterSpacing: '0.05em', fontWeight: '500' }],
-        'body-lg': ['18px', { lineHeight: '28px', letterSpacing: '0em', fontWeight: '400' }],
+        'label-sm': ['12px', { lineHeight: '16px', letterSpacing: '0em', fontWeight: '600' }],
         'body-md': ['16px', { lineHeight: '24px', letterSpacing: '0em', fontWeight: '400' }],
-        'headline-md': ['24px', { lineHeight: '32px', letterSpacing: '-0.02em', fontWeight: '600' }],
-        'display-lg': ['48px', { lineHeight: '56px', letterSpacing: '-0.04em', fontWeight: '700' }],
-        'button-text': ['14px', { lineHeight: '20px', letterSpacing: '0.01em', fontWeight: '600' }],
+        'body-lg': ['18px', { lineHeight: '28px', letterSpacing: '0em', fontWeight: '400' }],
+        'button-text': ['14px', { lineHeight: '20px', letterSpacing: '0em', fontWeight: '700' }],
       },
-
-      boxShadow: {
-        'sm': '0 4px 12px rgba(0, 0, 0, 0.06)',
-        'md': '0 10px 30px rgba(0, 0, 0, 0.08)',
-        'lg': '0 20px 60px rgba(0, 0, 0, 0.12)',
-        'xl': '0 30px 80px rgba(0, 0, 0, 0.18)',
-        '2xl': '0 40px 100px rgba(0, 0, 0, 0.20)',
-      },
-
       keyframes: {
         'accordion-down': {
           from: { height: '0' },

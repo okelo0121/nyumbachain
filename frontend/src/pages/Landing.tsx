@@ -1,145 +1,209 @@
-import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRight, CalendarCheck, MapPin, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from 'lucide-react';
+import { useState } from 'react';
+import { featuredProperties, formatUsdc } from '@/data/properties';
 
-interface NavLink {
-    label: string;
-    href: string;
-}
-
-const NAV_LINKS: NavLink[] = [
-    { label: 'Features', href: '#features' },
-    { label: 'Properties', href: '/search' },
-    { label: 'How It Works', href: '#how-it-works' },
-    { label: 'Pricing', href: '#pricing' },
-    { label: 'Contact', href: '#contact' },
+const trustSignals = [
+    { label: 'Protected deposits', value: '7-day inspection window' },
+    { label: 'Rent execution', value: 'Automated on Stellar' },
+    { label: 'Payment rail', value: 'USDC with receipts' },
 ];
 
-const STATS = [
-    { value: '500+', label: 'Properties Managed' },
-    { value: '2,000+', label: 'Happy Tenants' },
-    { value: '$500K', label: 'USDC Processed' },
-    { value: '99.9%', label: 'Payment Success' },
+const steps = [
+    {
+        icon: Search,
+        title: 'Find a verified home',
+        description: 'Browse large-photo listings, compare escrow terms, and choose a unit with clear monthly pricing.',
+    },
+    {
+        icon: ShieldCheck,
+        title: 'Apply with confidence',
+        description: 'Applications, approvals, deposits, and tenancy setup stay transparent for both tenant and landlord.',
+    },
+    {
+        icon: WalletCards,
+        title: 'Let rent run quietly',
+        description: 'USDC rent and protected deposits move through Stellar automation while the product stays human.',
+    },
 ];
-
-const STEPS = [
-    { number: 1, title: 'List Property', description: 'Add your property with details and pricing.' },
-    { number: 2, title: 'Tenant Applies', description: 'Tenants submit applications with their details.' },
-    { number: 3, title: 'Escrow Created', description: 'Smart contract locks deposit securely on-chain.' },
-    { number: 4, title: 'Rent Paid', description: 'Monthly rent is automatically collected via Stellar.' },
-    { number: 5, title: 'Deposit Returned', description: 'Security deposit is returned at lease end.' },
-];
-
-function GradientText({ children }: { children: React.ReactNode }) {
-    return <span className="gradient-text">{children}</span>;
-}
 
 export default function Landing() {
-    useEffect(() => {
-        const style = document.createElement('style');
-        style.textContent = `
-            .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; }
-            .gradient-text { background: linear-gradient(90deg, #6D28D9, #7C3AED); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        `;
-        document.head.appendChild(style);
-        return (): void => { document.head.removeChild(style); };
-    }, []);
+    const heroProperty = featuredProperties[0];
+    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-background">
-            <nav className="fixed top-0 z-50 w-full bg-white/90 backdrop-blur-xl border-b border-border h-20 flex items-center shadow-sm">
-                <div className="flex justify-between items-center w-full px-lg max-w-container-max mx-auto">
-                    <Link to="/" className="font-headline-md font-bold text-foreground">
+            <header className="fixed left-0 right-0 top-0 z-50 border-b border-white/20 bg-white/82 backdrop-blur-xl">
+                <div className="page-shell flex h-20 items-center justify-between">
+                    <Link to="/" className="text-xl font-extrabold text-primary">
                         NyumbaChain
                     </Link>
-                    <div className="hidden md:flex gap-xl items-center">
-                        {NAV_LINKS.map((link) => (
-                            <Link key={link.label} to={link.href} className="text-on-surface-variant hover:text-primary transition-colors">
-                                {link.label}
+                    <nav className="hidden items-center gap-8 text-sm font-semibold text-foreground md:flex">
+                        <a href="#stays" className="hover:text-primary">Stays</a>
+                        <a href="#how-it-works" className="hover:text-primary">Automation</a>
+                        <Link to="/landlord/dashboard" className="hover:text-primary">Landlords</Link>
+                        <Link to="/tenant/dashboard" className="hover:text-primary">Tenants</Link>
+                    </nav>
+                    <div className="flex items-center gap-2">
+                        <Link to="/auth/login" className="secondary-button hidden sm:inline-flex">Sign in</Link>
+                        <Link to="/auth/register" className="primary-button hidden md:inline-flex">Get started</Link>
+                        <button 
+                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                            className="md:hidden flex items-center justify-center p-2 rounded-full hover:bg-muted"
+                            aria-label="Toggle menu"
+                        >
+                            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            {mobileMenuOpen && (
+                <div className="fixed inset-0 z-30 md:hidden" onClick={() => setMobileMenuOpen(false)}>
+                    <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" />
+                    <div className="absolute inset-x-0 top-20 border-b border-white/20 bg-white/95 backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+                        <nav className="flex flex-col gap-1 p-4">
+                            <a href="#stays" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Stays</a>
+                            <a href="#how-it-works" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Automation</a>
+                            <Link to="/landlord/dashboard" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Landlords</Link>
+                            <Link to="/tenant/dashboard" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Tenants</Link>
+                            <Link to="/auth/login" className="mt-2 secondary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
+                            <Link to="/auth/register" className="primary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Get started</Link>
+                        </nav>
+                    </div>
+                </div>
+            )}
+
+            <main>
+                <section className="relative min-h-[86vh] overflow-hidden pt-20">
+                    <img
+                        src={heroProperty.image}
+                        alt={heroProperty.title}
+                        className="absolute inset-0 h-full w-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,25,45,0.78),rgba(8,25,45,0.46),rgba(8,25,45,0.10))]" />
+
+                    <div className="page-shell relative flex min-h-[calc(86vh-80px)] items-center py-16">
+                        <div className="max-w-3xl fade-up">
+                            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/16 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+                                <Sparkles className="h-4 w-4" />
+                                Rental operating system
+                            </div>
+                            <h1 className="hero-title">The future of renting feels effortless.</h1>
+                            <p className="mt-6 max-w-2xl text-lg leading-8 text-white/88">
+                                Discover beautiful homes across African cities, apply with confidence, and let Stellar-powered escrow handle rent, deposits, and receipts behind the scenes.
+                            </p>
+
+                            <div className="mt-9 max-w-4xl rounded-full bg-white p-2 shadow-[0_24px_70px_rgba(8,25,45,0.28)]">
+                                <div className="grid grid-cols-1 gap-2 md:grid-cols-[1.1fr_0.9fr_0.7fr_auto]">
+                                    <label className="flex items-center gap-3 rounded-full px-4 py-3 hover:bg-muted">
+                                        <MapPin className="h-5 w-5 text-primary" />
+                                        <span className="min-w-0">
+                                            <span className="block text-xs font-bold text-foreground">Where</span>
+                                            <span className="block truncate text-sm text-muted-foreground">Nairobi, Kampala, Kigali</span>
+                                        </span>
+                                    </label>
+                                    <label className="flex items-center gap-3 rounded-full px-4 py-3 hover:bg-muted">
+                                        <CalendarCheck className="h-5 w-5 text-primary" />
+                                        <span>
+                                            <span className="block text-xs font-bold text-foreground">Move in</span>
+                                            <span className="block text-sm text-muted-foreground">Flexible dates</span>
+                                        </span>
+                                    </label>
+                                    <label className="flex items-center gap-3 rounded-full px-4 py-3 hover:bg-muted">
+                                        <ShieldCheck className="h-5 w-5 text-primary" />
+                                        <span>
+                                            <span className="block text-xs font-bold text-foreground">Escrow</span>
+                                            <span className="block text-sm text-muted-foreground">Protected</span>
+                                        </span>
+                                    </label>
+                                    <Link to="/search" className="primary-button min-h-14 w-full rounded-full md:w-auto">
+                                        <Search className="h-5 w-5" />
+                                        Search
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section className="page-shell -mt-10 relative z-10">
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {trustSignals.map((signal) => (
+                            <div key={signal.label} className="surface-card p-5">
+                                <p className="text-sm font-bold text-primary">{signal.label}</p>
+                                <p className="mt-2 text-lg font-semibold">{signal.value}</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                <section id="stays" className="page-shell py-20">
+                    <div className="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+                        <div>
+                            <p className="section-kicker">Featured stays</p>
+                            <h2 className="page-title mt-3">Homes that feel premium before the lease even starts.</h2>
+                        </div>
+                        <Link to="/search" className="secondary-button w-fit">
+                            Explore all homes
+                            <ArrowRight className="h-4 w-4" />
+                        </Link>
+                    </div>
+
+                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                        {featuredProperties.map((property) => (
+                            <Link key={property.id} to={`/properties/${property.id}`} className="group">
+                                <article className="overflow-hidden">
+                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-muted">
+                                        <img
+                                            src={property.image}
+                                            alt={property.title}
+                                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                        />
+                                        <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-primary shadow-sm">
+                                            {property.available ? 'Available now' : 'Waitlist'}
+                                        </span>
+                                    </div>
+                                    <div className="pt-4">
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <h3 className="font-bold">{property.title}</h3>
+                                                <p className="text-sm text-muted-foreground">{property.neighborhood}, {property.city}</p>
+                                            </div>
+                                            <span className="text-sm font-bold">{property.rating}</span>
+                                        </div>
+                                        <p className="mt-2 text-sm text-muted-foreground">{property.beds} beds · {property.baths} baths · {property.sqm} sqm</p>
+                                        <p className="mt-2 font-bold">{formatUsdc(property.price)} USDC <span className="font-normal text-muted-foreground">/ month</span></p>
+                                    </div>
+                                </article>
                             </Link>
                         ))}
                     </div>
-                    <div className="flex items-center gap-md">
-                        <Link to="/auth/login" className="text-primary font-button-text hover:underline">Sign In</Link>
-                        <Link to="/auth/register" className="bg-primary-container text-on-primary-container px-lg py-sm rounded-lg font-button-text shadow-sm hover:shadow-md transition-shadow">Get Started</Link>
-                    </div>
-                </div>
-            </nav>
+                </section>
 
-            <main className="pt-32 pb-2xl px-lg max-w-container-max mx-auto">
-                <div className="text-center max-w-3xl mx-auto mb-16">
-                    <h1 className="font-display-lg md:text-display-lg mb-6 text-foreground">
-                        Rental Management <GradientText>Powered By Blockchain</GradientText>
-                    </h1>
-                    <p className="font-body-lg text-on-surface-variant mb-8">
-                        Automate rent collection, secure tenant deposits, and manage properties with Stellar-powered smart contracts.
-                    </p>
-                    <div className="flex justify-center gap-md">
-                        <Link to="/search" className="bg-primary-container text-on-primary-container px-xl py-md rounded-lg font-button-text shadow-sm hover:shadow-md transition-shadow">Find Property</Link>
-                        <Link to="/auth/register" className="bg-surface text-foreground px-xl py-md rounded-lg font-button-text shadow-sm hover:shadow-md transition-shadow">Become a Landlord</Link>
-                    </div>
-                </div>
-
-                <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-lg mb-20">
-                    {STATS.map((stat) => (
-                        <div key={stat.label} className="card card-shadow-sm p-lg text-center">
-                            <h3 className="font-display-lg text-primary mb-2">{stat.value}</h3>
-                            <p className="text-on-surface-variant font-label-sm">{stat.label}</p>
+                <section id="how-it-works" className="bg-white py-20">
+                    <div className="page-shell">
+                        <div className="max-w-3xl">
+                            <p className="section-kicker">How it works</p>
+                            <h2 className="page-title mt-3">A rental flow people understand, backed by infrastructure they can trust.</h2>
                         </div>
-                    ))}
-                </div>
-
-                <div className="card card-shadow-xl p-xl max-w-4xl mx-auto">
-                    <h2 className="font-headline-md text-center mb-12">How It Works</h2>
-                    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-xl">
-                        {STEPS.map((step) => (
-                            <div key={step.number} className="text-center">
-                                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold mx-auto mb-4 shadow-sm">
-                                    {step.number}
-                                </div>
-                                <h4 className="font-headline-md mb-2">{step.title}</h4>
-                                <p className="text-on-surface-variant text-body-md">{step.description}</p>
-                            </div>
-                        ))}
+                        <div className="mt-10 grid gap-5 md:grid-cols-3">
+                            {steps.map((step) => {
+                                const Icon = step.icon;
+                                return (
+                                    <div key={step.title} className="surface-card p-6">
+                                        <div className="mb-6 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                                            <Icon className="h-6 w-6" />
+                                        </div>
+                                        <h3 className="text-xl font-bold">{step.title}</h3>
+                                        <p className="mt-3 leading-7 text-muted-foreground">{step.description}</p>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                </section>
             </main>
-
-            <footer className="bg-surface pt-16 pb-8">
-                <div className="max-w-container-max mx-auto px-lg">
-                    <div className="grid md:grid-cols-4 gap-xl mb-8">
-                        <div>
-                            <h4 className="font-headline-md text-primary mb-4">NyumbaChain</h4>
-                            <p className="text-on-surface-variant text-body-md">Blockchain rental management for Africa.</p>
-                        </div>
-                        <div>
-                            <h5 className="font-button-text mb-4">Product</h5>
-                            <div className="space-y-2">
-                                <Link className="block text-on-surface-variant hover:text-primary" to="/search">Search Properties</Link>
-                                <Link className="block text-on-surface-variant hover:text-primary" to="/auth/login">Dashboard</Link>
-                                <Link className="block text-on-surface-variant hover:text-primary" to="/auth/register">Become a Landlord</Link>
-                            </div>
-                        </div>
-                        <div>
-                            <h5 className="font-button-text mb-4">Company</h5>
-                            <div className="space-y-2">
-                                <Link className="block text-on-surface-variant hover:text-primary" to="#">About</Link>
-                                <Link className="block text-on-surface-variant hover:text-primary" to="#">Careers</Link>
-                                <Link className="block text-on-surface-variant hover:text-primary" to="#">Contact</Link>
-                            </div>
-                        </div>
-                        <div>
-                            <h5 className="font-button-text mb-4">Legal</h5>
-                            <div className="space-y-2">
-                                <Link className="block text-on-surface-variant hover:text-primary" to="#">Privacy</Link>
-                                <Link className="block text-on-surface-variant hover:text-primary" to="#">Terms</Link>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="border-t border-border pt-8 text-center text-on-surface-variant">
-                        © 2024 NyumbaChain. All rights reserved.
-                    </div>
-                </div>
-            </footer>
         </div>
     );
 }

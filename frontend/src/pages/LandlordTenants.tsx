@@ -1,6 +1,8 @@
+import { CalendarClock, CircleDollarSign, Mail, ShieldCheck } from 'lucide-react';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
+import { featuredProperties, formatUsdc } from '@/data/properties';
 
-const LANDLORD_SIDEBAR_ITEMS = [
+const landlordItems = [
     { icon: 'dashboard', label: 'Overview', href: '/landlord/dashboard' },
     { icon: 'home_work', label: 'Properties', href: '/landlord/properties' },
     { icon: 'add', label: 'Add Property', href: '/landlord/properties/new' },
@@ -9,40 +11,72 @@ const LANDLORD_SIDEBAR_ITEMS = [
     { icon: 'settings', label: 'Settings', href: '/settings' },
 ];
 
+const tenants = [
+    { name: 'Sarah Wanjiku', property: featuredProperties[0], lease: 'Jan 2026 - Dec 2026', status: 'Active' },
+    { name: 'James Mwangi', property: featuredProperties[1], lease: 'Mar 2026 - Feb 2027', status: 'Rent due soon' },
+    { name: 'Nadia Atwine', property: featuredProperties[3], lease: 'Apr 2026 - Sep 2026', status: 'Inspection window' },
+];
+
 export default function LandlordTenants() {
     return (
-        <div className="flex min-h-screen bg-background">
-            <Sidebar items={LANDLORD_SIDEBAR_ITEMS} user={{ name: 'O. Otieno', address: 'GA5...9KXW' }} />
-            
-            <main className="flex-1 md:ml-64 p-lg">
-                <header className="mb-8">
-                    <h1 className="font-display-lg">Tenants</h1>
-                    <p className="text-on-surface-variant">Manage your tenants.</p>
-                </header>
+        <div className="min-h-screen bg-background md:pl-72">
+            <Sidebar items={landlordItems} user={{ name: 'O. Otieno', address: 'GA5...9KXW' }} />
 
-                <div className="card card-shadow-md p-lg">
-                    <div className="space-y-4">
-                        <div className="flex items-center gap-4 p-4 bg-surface rounded-lg">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">SW</div>
-                            <div className="flex-1">
-                                <p className="font-button-text">Sarah Wanjiku</p>
-                                <p className="text-on-surface-variant text-label-sm">Unit #301 • Lease: Jan 2024 - Dec 2024</p>
-                            </div>
-                            <span className="text-success bg-success/10 px-3 py-1 rounded-full text-label-sm">Active</span>
+            <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8">
+                <div className="mx-auto max-w-7xl">
+                    <header className="mb-8">
+                        <p className="section-kicker">Relationships</p>
+                        <h1 className="dashboard-title mt-3">Tenants</h1>
+                        <p className="mt-2 max-w-2xl text-muted-foreground">See lease health, rent automation status, deposits, and tenant communication in one place.</p>
+                    </header>
+
+                    <section className="surface-card overflow-hidden">
+                        <div className="hidden grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] gap-4 border-b border-border px-5 py-4 text-sm font-bold text-muted-foreground lg:grid">
+                            <span>Tenant</span>
+                            <span>Property</span>
+                            <span>Lease</span>
+                            <span>Rent</span>
+                            <span>Status</span>
                         </div>
-                        <div className="flex items-center gap-4 p-4 bg-surface rounded-lg">
-                            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">JM</div>
-                            <div className="flex-1">
-                                <p className="font-button-text">James Mwangi</p>
-                                <p className="text-on-surface-variant text-label-sm">Unit #205 • Lease: Feb 2024 - Jul 2024</p>
-                            </div>
-                            <span className="text-warning bg-warning/10 px-3 py-1 rounded-full text-label-sm">Expiring</span>
+                        <div className="divide-y divide-border">
+                            {tenants.map((tenant) => (
+                                <div key={tenant.name} className="grid gap-4 px-5 py-5 lg:grid-cols-[1.2fr_1fr_0.8fr_0.8fr_auto] lg:items-center">
+                                    <div className="flex items-center gap-3">
+                                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                                            {tenant.name.split(' ').map((part) => part[0]).join('')}
+                                        </div>
+                                        <div>
+                                            <p className="font-bold">{tenant.name}</p>
+                                            <p className="flex items-center gap-1 text-sm text-muted-foreground">
+                                                <Mail className="h-3.5 w-3.5" />
+                                                receipts enabled
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <p className="font-semibold">{tenant.property.title}</p>
+                                        <p className="text-sm text-muted-foreground">{tenant.property.neighborhood}</p>
+                                    </div>
+                                    <p className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                                        <CalendarClock className="h-4 w-4 text-primary" />
+                                        {tenant.lease}
+                                    </p>
+                                    <p className="flex items-center gap-2 font-bold text-primary">
+                                        <CircleDollarSign className="h-4 w-4" />
+                                        {formatUsdc(tenant.property.price)} USDC
+                                    </p>
+                                    <span className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+                                        <ShieldCheck className="h-4 w-4" />
+                                        {tenant.status}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
-                    </div>
+                    </section>
                 </div>
             </main>
 
-            <MobileNav items={LANDLORD_SIDEBAR_ITEMS} />
+            <MobileNav items={landlordItems} />
         </div>
     );
 }

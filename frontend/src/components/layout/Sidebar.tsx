@@ -1,4 +1,16 @@
 import { Link } from 'react-router-dom';
+import {
+    BarChart3,
+    FileText,
+    Home,
+    HomeIcon,
+    LucideIcon,
+    Plus,
+    Settings,
+    Users,
+    Wallet,
+} from 'lucide-react';
+import { cn } from '@/utils/cn';
 
 interface SidebarItem {
     icon: string;
@@ -16,40 +28,64 @@ interface SidebarProps {
     };
 }
 
+const icons: Record<string, LucideIcon> = {
+    dashboard: BarChart3,
+    home_work: Home,
+    add: Plus,
+    description: FileText,
+    people: Users,
+    settings: Settings,
+    account_balance_wallet: Wallet,
+};
+
+function getIcon(icon: string) {
+    return icons[icon] ?? HomeIcon;
+}
+
 export function Sidebar({ items, user }: SidebarProps) {
     return (
-        <aside className="flex flex-col h-screen fixed left-0 top-0 bg-white border-r border-border w-64 z-50 md:flex hidden shadow-md">
-            <div className="px-xl py-xl">
-                <Link to="/" className="font-headline-md font-bold text-foreground">
+        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-border/80 bg-white/92 shadow-[18px_0_44px_rgba(18,29,45,0.06)] backdrop-blur-xl md:flex md:flex-col">
+            <div className="px-7 py-7">
+                <Link to="/" className="text-2xl font-extrabold text-primary">
                     NyumbaChain
                 </Link>
-                <p className="text-on-surface-variant text-label-sm opacity-70">Portal</p>
+                <p className="mt-1 text-sm text-muted-foreground">Rental operating system</p>
             </div>
-            <nav className="flex-1 px-md">
-                {items.map((item) => (
-                    <Link
-                        key={item.label}
-                        to={item.href}
-                        className={`flex items-center gap-md px-lg py-md rounded-lg mb-unit transition-all ${
-                            item.active
-                                ? 'bg-primary/10 text-primary'
-                                : 'text-on-surface-variant hover:bg-surface hover:text-foreground'
-                        }`}
-                    >
-                        <span className="material-symbols-outlined">{item.icon}</span>
-                        <span className="font-label-sm">{item.label}</span>
-                    </Link>
-                ))}
+
+            <nav className="flex-1 space-y-1 px-4">
+                {items.map((item) => {
+                    const Icon = getIcon(item.icon);
+                    return (
+                        <Link
+                            key={item.label}
+                            to={item.href}
+                            className={cn(
+                                'flex items-center gap-3 rounded-full px-4 py-3 text-sm font-semibold transition',
+                                item.active
+                                    ? 'bg-primary text-white shadow-[0_12px_28px_rgba(15,45,78,0.20)]'
+                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                            )}
+                        >
+                            <Icon className="h-5 w-5" />
+                            <span>{item.label}</span>
+                        </Link>
+                    );
+                })}
             </nav>
+
             {user && (
-                <div className="p-lg border-t border-border">
-                    <div className="flex items-center gap-md">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold">
-                            {user.avatar ? <img src={user.avatar} alt="User" className="w-full h-full rounded-full object-cover" /> : user.name.charAt(0)}
+                <div className="border-t border-border p-5">
+                    <div className="flex items-center gap-3 rounded-[8px] bg-muted p-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+                            {user.avatar ? (
+                                <img src={user.avatar} alt={user.name} className="h-full w-full rounded-full object-cover" />
+                            ) : (
+                                user.name.charAt(0)
+                            )}
                         </div>
-                        <div className="flex-1 min-w-0">
-                            <p className="font-button-text truncate">{user.name}</p>
-                            <p className="text-on-surface-variant text-label-sm text-[10px] truncate">{user.address}</p>
+                        <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-bold">{user.name}</p>
+                            <p className="truncate font-mono text-xs text-muted-foreground">{user.address}</p>
                         </div>
                     </div>
                 </div>
@@ -60,19 +96,23 @@ export function Sidebar({ items, user }: SidebarProps) {
 
 export function MobileNav({ items }: { items: SidebarItem[] }) {
     return (
-        <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-border flex justify-around py-md px-lg shadow-lg">
-            {items.map((item) => (
-                <Link
-                    key={item.label}
-                    to={item.href}
-                    className={`flex flex-col items-center gap-xs text-[10px] font-label-sm ${
-                        item.active ? 'text-primary' : 'text-on-surface-variant'
-                    }`}
-                >
-                    <span className="material-symbols-outlined">{item.icon}</span>
-                    <span>{item.label}</span>
-                </Link>
-            ))}
+        <nav className="fixed bottom-0 left-0 right-0 z-40 flex justify-around border-t border-border bg-white/95 px-2 py-2 shadow-[0_-18px_36px_rgba(18,29,45,0.08)] backdrop-blur-xl md:hidden">
+            {items.slice(0, 5).map((item) => {
+                const Icon = getIcon(item.icon);
+                return (
+                    <Link
+                        key={item.label}
+                        to={item.href}
+                        className={cn(
+                            'flex min-w-0 flex-1 flex-col items-center gap-1 rounded-full px-2 py-2 text-[11px] font-semibold transition',
+                            item.active ? 'bg-primary text-white' : 'text-muted-foreground',
+                        )}
+                    >
+                        <Icon className="h-5 w-5 shrink-0" />
+                        <span className="max-w-full truncate">{item.label}</span>
+                    </Link>
+                );
+            })}
         </nav>
     );
 }
