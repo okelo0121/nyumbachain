@@ -65,7 +65,7 @@ export default function LandlordDashboard() {
                             </div>
 
                             <div className="space-y-5">
-                                {featuredProperties.slice(0, 3).map((property, index) => (
+                                {featuredProperties.slice(0, 3).map((property: typeof featuredProperties[0], index: number) => (
                                     <div key={property.id} className="grid gap-4 rounded-[8px] border border-border p-4 md:grid-cols-[130px_1fr_auto] md:items-center">
                                         <img src={property.image} alt={property.title} className="h-28 w-full rounded-[8px] object-cover md:w-32" />
                                         <div>
