@@ -1,0 +1,69 @@
+# =========================================================
+# NyumbaChain — Root .gitignore
+# =========================================================
+
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+out/
+*.tsbuildinfo
+
+# WASM build outputs
+contracts/**/target/
+contracts/**/*.wasm
+contracts/**/*.wasm.optimized
+
+# Environment files — NEVER commit secrets
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Testing / Coverage
+coverage/
+.nyc_output/
+*.lcov
+junit.xml
+
+# Vercel / Railway
+.vercel/
+.railway/
+
+# Local Postgres / Redis data
+*.db
+*.sqlite
+data/
+
+# Secrets
+secrets/
+*.pem
+*.key
+service-keypair.txt
+
+# OS files
+.DS_Store
+.dtache
+.envrc
