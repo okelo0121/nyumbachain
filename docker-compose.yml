@@ -1,0 +1,42 @@
+# =========================================================
+# NyumbaChain — Local Development Stack
+# Use: docker compose up -d
+# =========================================================
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nyumba_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: nyumba
+      POSTGRES_PASSWORD: nyumba
+      POSTGRES_DB: nyumbachain
+    ports:
+      - "5432:5432"
+    volumes:
+      - nyumba_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U nyumba"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: nyumba_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - nyumba_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  nyumba_pgdata:
+  nyumba_redisdata:
