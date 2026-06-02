@@ -178,7 +178,6 @@ stellar contract deploy --wasm target/wasm32-unknown-unknown/release/nyumbachain
 ## 🌍 Live Demo (Testnet)
 
 - **Frontend:** https://nyumbachain.vercel.app
-- **API:** https://api.nyumbachain.com
 - **Testnet contract:** https://stellar.expert/explorer/testnet/contract/REPLACE_WITH_DEPLOYED_ID
 
 ---
