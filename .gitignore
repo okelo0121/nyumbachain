@@ -55,7 +55,7 @@ junit.xml
 # Local Postgres / Redis data
 *.db
 *.sqlite
-data/
+/data/
 
 # Secrets
 secrets/

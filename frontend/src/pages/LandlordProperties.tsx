@@ -32,7 +32,7 @@ export default function LandlordProperties() {
                     </header>
 
                     <div className="grid gap-6 lg:grid-cols-3">
-                        {featuredProperties.map((property) => (
+                        {featuredProperties.map((property: typeof featuredProperties[0]) => (
                             <article key={property.id} className="surface-card overflow-hidden">
                                 <div className="relative aspect-[4/3] overflow-hidden">
                                     <img src={property.image} alt={property.title} className="h-full w-full object-cover" />

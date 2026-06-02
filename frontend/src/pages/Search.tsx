@@ -15,7 +15,7 @@ export default function Search() {
 
     const filteredProperties = useMemo(() => {
         const normalized = query.trim().toLowerCase();
-        return featuredProperties.filter((property) => {
+        return featuredProperties.filter((property: typeof featuredProperties[0]) => {
             const matchesQuery =
                 !normalized ||
                 [property.title, property.city, property.neighborhood, property.country, property.unitType]
@@ -87,7 +87,7 @@ export default function Search() {
                     </div>
 
                     <div className="grid gap-6 md:grid-cols-2">
-                        {filteredProperties.map((property) => (
+                        {filteredProperties.map((property: typeof featuredProperties[0]) => (
                             <Link
                                 key={property.id}
                                 to={`/properties/${property.id}`}
@@ -153,7 +153,7 @@ export default function Search() {
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
-                            {featuredProperties.map((property) => (
+                            {featuredProperties.map((property: typeof featuredProperties[0]) => (
                                 <Marker
                                     key={property.id}
                                     position={property.coordinates}

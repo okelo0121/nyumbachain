@@ -4,7 +4,7 @@ import { featuredProperties, formatUsdc } from '@/data/properties';
 
 export default function PropertyDetail() {
     const { id } = useParams();
-    const property = featuredProperties.find((item) => item.id === id) ?? featuredProperties[0];
+    const property = featuredProperties.find((item: typeof featuredProperties[0]) => item.id === id) ?? featuredProperties[0];
 
     return (
         <div className="min-h-screen bg-background">
@@ -42,7 +42,7 @@ export default function PropertyDetail() {
                     <div className="grid gap-3 overflow-hidden rounded-[8px] lg:grid-cols-[1.25fr_0.75fr]">
                         <img src={property.gallery[0]} alt={property.title} className="h-[420px] w-full object-cover" />
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-                            {property.gallery.slice(1).map((image) => (
+                            {property.gallery.slice(1).map((image: string) => (
                                 <img key={image} src={image} alt={property.title} className="h-[204px] w-full object-cover" />
                             ))}
                         </div>
@@ -84,7 +84,7 @@ export default function PropertyDetail() {
                         <div className="surface-card p-6">
                             <h2 className="text-2xl font-bold">What this place offers</h2>
                             <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                                {property.amenities.map((amenity) => (
+                                {property.amenities.map((amenity: string) => (
                                     <div key={amenity} className="flex items-center gap-3 rounded-[8px] border border-border p-4">
                                         <Sparkles className="h-5 w-5 text-primary" />
                                         <span className="font-semibold">{amenity}</span>
