@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
     BarChart3,
     FileText,
@@ -9,8 +9,11 @@ import {
     Settings,
     Users,
     Wallet,
+    LogOut,
 } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { useAuthStore } from '@/stores/authStore';
+
 
 interface SidebarItem {
     icon: string;
@@ -43,13 +46,18 @@ function getIcon(icon: string) {
 }
 
 export function Sidebar({ items, user }: SidebarProps) {
+    const navigate = useNavigate();
+    const logout = useAuthStore((state) => state.logout);
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
+
     return (
         <aside className="fixed left-0 top-0 z-40 hidden h-screen w-72 border-r border-border/80 bg-white/92 shadow-[18px_0_44px_rgba(18,29,45,0.06)] backdrop-blur-xl md:flex md:flex-col">
             <div className="px-7 py-7">
-                <Link to="/" className="text-2xl font-extrabold text-primary">
-                    NyumbaChain
-                </Link>
-                <p className="mt-1 text-sm text-muted-foreground">Rental operating system</p>
+                <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground/85">Rental operating system</p>
             </div>
 
             <nav className="flex-1 space-y-1 px-4">
@@ -74,7 +82,7 @@ export function Sidebar({ items, user }: SidebarProps) {
             </nav>
 
             {user && (
-                <div className="border-t border-border p-5">
+                <div className="border-t border-border p-5 space-y-3">
                     <div className="flex items-center gap-3 rounded-[8px] bg-muted p-3">
                         <div className="flex h-11 w-11 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
                             {user.avatar ? (
@@ -88,6 +96,13 @@ export function Sidebar({ items, user }: SidebarProps) {
                             <p className="truncate font-mono text-xs text-muted-foreground">{user.address}</p>
                         </div>
                     </div>
+                    <button
+                        onClick={handleLogout}
+                        className="flex w-full items-center justify-center gap-2 rounded-full border border-border bg-white px-4 py-2.5 text-xs font-bold text-muted-foreground shadow-[0_4px_12px_rgba(0,0,0,0.03)] transition hover:border-error/30 hover:bg-error/5 hover:text-error"
+                    >
+                        <LogOut className="h-4 w-4" />
+                        Log out
+                    </button>
                 </div>
             )}
         </aside>

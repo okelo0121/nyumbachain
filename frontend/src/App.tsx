@@ -22,6 +22,8 @@ import LandlordTenants from '@/pages/LandlordTenants';
 import TenantDashboard from '@/pages/TenantDashboard';
 import TenantApplications from '@/pages/TenantApplications';
 import TenantWallet from '@/pages/TenantWallet';
+import Settings from '@/pages/Settings';
+
 
 export default function App() {
     const [isLoading, setIsLoading] = useState(true);
@@ -75,6 +77,11 @@ export default function App() {
                 <Route path="/tenant/dashboard" element={<TenantDashboard />} />
                 <Route path="/tenant/applications" element={<TenantApplications />} />
                 <Route path="/tenant/wallet" element={<TenantWallet />} />
+            </Route>
+
+            {/* Shared Private Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['landlord', 'tenant']} isLoading={isLoading} />}>
+                <Route path="/settings" element={<Settings />} />
             </Route>
 
             {/* Fallback */}

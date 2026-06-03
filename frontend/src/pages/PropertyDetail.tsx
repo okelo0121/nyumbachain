@@ -135,6 +135,14 @@ export default function PropertyDetail() {
                             <ArrowLeft className="h-4 w-4" />
                             Search
                         </Link>
+                        {currentUser && (
+                            <Link 
+                                to={currentUser.role === 'landlord' ? '/landlord/dashboard' : '/tenant/dashboard'} 
+                                className="primary-button py-2 text-xs"
+                            >
+                                Dashboard
+                            </Link>
+                        )}
                         <button className="secondary-button py-2">
                             <Heart className="h-4 w-4" />
                             Save

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { formatUsdc } from '@/data/properties';
+import { useAuthStore } from '@/stores/authStore';
+
 
 const trustSignals = [
     { label: 'Protected deposits', value: '7-day inspection window' },
@@ -36,6 +38,8 @@ const defaultHeroProperty = {
 
 export default function Landing() {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+    const { user } = useAuthStore();
+
 
     // Fetch featured stays from backend (limit to 4 properties)
     const { data: propertiesData, isLoading } = useQuery({
@@ -82,12 +86,21 @@ export default function Landing() {
                     <nav className="hidden items-center gap-8 text-sm font-semibold text-foreground md:flex">
                         <a href="#stays" className="hover:text-primary">Stays</a>
                         <a href="#how-it-works" className="hover:text-primary">Automation</a>
-                        <Link to="/landlord/dashboard" className="hover:text-primary">Landlords</Link>
-                        <Link to="/tenant/dashboard" className="hover:text-primary">Tenants</Link>
                     </nav>
                     <div className="flex items-center gap-2">
-                        <Link to="/auth/login" className="secondary-button hidden sm:inline-flex">Sign in</Link>
-                        <Link to="/auth/register" className="primary-button hidden md:inline-flex">Get started</Link>
+                        {user ? (
+                            <Link 
+                                to={user.role === 'landlord' ? '/landlord/dashboard' : '/tenant/dashboard'} 
+                                className="primary-button inline-flex"
+                            >
+                                Dashboard
+                            </Link>
+                        ) : (
+                            <>
+                                <Link to="/auth/login" className="secondary-button hidden sm:inline-flex">Sign in</Link>
+                                <Link to="/auth/register" className="primary-button hidden md:inline-flex">Get started</Link>
+                            </>
+                        )}
                         <button 
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             className="md:hidden flex items-center justify-center p-2 rounded-full hover:bg-muted"
@@ -106,10 +119,20 @@ export default function Landing() {
                         <nav className="flex flex-col gap-1 p-4">
                             <a href="#stays" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Stays</a>
                             <a href="#how-it-works" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Automation</a>
-                            <Link to="/landlord/dashboard" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Landlords</Link>
-                            <Link to="/tenant/dashboard" className="rounded-full px-4 py-3 text-sm font-semibold text-foreground hover:bg-muted" onClick={() => setMobileMenuOpen(false)}>Tenants</Link>
-                            <Link to="/auth/login" className="mt-2 secondary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
-                            <Link to="/auth/register" className="primary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Get started</Link>
+                            {user ? (
+                                <Link 
+                                    to={user.role === 'landlord' ? '/landlord/dashboard' : '/tenant/dashboard'} 
+                                    className="primary-button w-full justify-center" 
+                                    onClick={() => setMobileMenuOpen(false)}
+                                >
+                                    Dashboard
+                                </Link>
+                            ) : (
+                                <>
+                                    <Link to="/auth/login" className="mt-2 secondary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Sign in</Link>
+                                    <Link to="/auth/register" className="primary-button w-full justify-center" onClick={() => setMobileMenuOpen(false)}>Get started</Link>
+                                </>
+                            )}
                         </nav>
                     </div>
                 </div>
