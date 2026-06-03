@@ -16,17 +16,17 @@ export interface UserAttributes {
 }
 
 export class User extends Model<UserAttributes> implements UserAttributes {
-  public id!: string;
-  public email!: string;
-  public password_hash!: string;
-  public role!: 'landlord' | 'tenant' | 'admin';
-  public full_name!: string;
-  public phone?: string;
-  public stellar_wallet?: string;
-  public stellar_wallet_secret_encrypted?: string;
-  public kyc_verified!: boolean;
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare email: string;
+  declare password_hash: string;
+  declare role: 'landlord' | 'tenant' | 'admin';
+  declare full_name: string;
+  declare phone?: string;
+  declare stellar_wallet?: string;
+  declare stellar_wallet_secret_encrypted?: string;
+  declare kyc_verified: boolean;
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 User.init(

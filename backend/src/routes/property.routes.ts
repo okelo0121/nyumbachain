@@ -16,12 +16,13 @@ import { uploadPhotos } from '../controllers/upload.controller';
 import { authenticateJWT, authorizeRoles } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
 import { upload } from '../middleware/multer';
+import { cacheMiddleware } from '../middleware/cache';
 
 const router = Router();
 
 // Properties
-router.get('/', searchProperties);
-router.get('/:id', getPropertyDetails);
+router.get('/', cacheMiddleware(300), searchProperties);
+router.get('/:id', cacheMiddleware(300), getPropertyDetails);
 router.post(
   '/',
   authenticateJWT,

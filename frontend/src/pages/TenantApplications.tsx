@@ -1,7 +1,10 @@
 import { Link } from 'react-router-dom';
 import { ArrowUpRight, CheckCircle2, Clock, FileText, ShieldCheck } from 'lucide-react';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
-import { featuredProperties, formatUsdc } from '@/data/properties';
+import { formatUsdc } from '@/data/properties';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
 
 const tenantItems = [
     { icon: 'dashboard', label: 'Overview', href: '/tenant/dashboard' },
@@ -11,16 +14,36 @@ const tenantItems = [
     { icon: 'settings', label: 'Settings', href: '/settings' },
 ];
 
-const applications = [
-    { property: featuredProperties[0], status: 'Pending landlord review', progress: 68 },
-    { property: featuredProperties[1], status: 'Approved - fund deposit', progress: 92 },
-    { property: featuredProperties[3], status: 'More info requested', progress: 45 },
-];
-
 export default function TenantApplications() {
+    const { user } = useAuthStore();
+
+    const formattedWallet = user?.stellar_wallet 
+        ? `${user.stellar_wallet.slice(0, 6)}...${user.stellar_wallet.slice(-6)}` 
+        : 'No wallet';
+
+    // Fetch tenant's applications from the backend
+    const { data: applications, isLoading } = useQuery({
+        queryKey: ['myApplications', user?.id],
+        queryFn: () => api.get('/applications/mine').then((res) => res.data),
+        enabled: !!user?.id,
+    });
+
+    const tenantApps = applications || [];
+
+    if (isLoading) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-background">
+                <div className="flex flex-col items-center gap-3">
+                    <div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                    <p className="text-sm font-semibold text-muted-foreground">Loading applications...</p>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen bg-background md:pl-72">
-            <Sidebar items={tenantItems} user={{ name: 'K. Mwangi', address: 'GC7...49W' }} />
+            <Sidebar items={tenantItems} user={{ name: user?.full_name || 'Tenant', address: formattedWallet }} />
 
             <main className="px-4 pb-24 pt-6 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl">
@@ -37,47 +60,77 @@ export default function TenantApplications() {
                     </header>
 
                     <div className="grid gap-5">
-                        {applications.map((application) => (
-                            <article key={application.property.id} className="surface-card p-5">
-                                <div className="grid gap-5 md:grid-cols-[150px_1fr_auto] md:items-center">
-                                    <img src={application.property.image} alt={application.property.title} className="h-36 w-full rounded-[8px] object-cover md:w-36" />
-                                    <div>
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <h2 className="text-xl font-bold">{application.property.title}</h2>
-                                            <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary">{application.status}</span>
-                                        </div>
-                                        <p className="mt-1 text-muted-foreground">{application.property.neighborhood}, {application.property.city}</p>
-                                        <div className="mt-4 grid gap-3 sm:grid-cols-3">
-                                            <div className="rounded-[8px] bg-muted p-3">
-                                                <p className="text-xs font-bold text-muted-foreground">Rent</p>
-                                                <p className="font-bold">{formatUsdc(application.property.price)} USDC</p>
+                        {tenantApps.length === 0 ? (
+                            <div className="surface-card flex flex-col items-center justify-center py-20 text-center">
+                                <FileText className="mb-4 h-12 w-12 text-muted-foreground/60" />
+                                <h3 className="text-lg font-bold">No applications submitted</h3>
+                                <p className="mt-1 text-sm text-muted-foreground">Explore available rental stays and apply to see your applications here.</p>
+                            </div>
+                        ) : (
+                            tenantApps.map((application: any) => {
+                                const property = application.unit?.property;
+                                const propertyTitle = property?.title || 'Unknown Property';
+                                const propertyImage = property?.photos?.[0] || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=80';
+                                const neighborhood = property?.address?.split(',')[0] || 'Neighborhood';
+                                const city = property?.city || 'City';
+                                
+                                const rent = Number(application.unit?.monthly_rent_usdc) || 0;
+                                const deposit = Number(application.unit?.deposit_usdc) || 0;
+
+                                // Custom status labeling and progress percentage mapping
+                                let progressPercent = 50;
+                                let statusLabel = 'Pending review';
+                                if (application.status === 'approved') {
+                                    progressPercent = 100;
+                                    statusLabel = 'Approved - escrow ready';
+                                } else if (application.status === 'rejected') {
+                                    progressPercent = 100;
+                                    statusLabel = 'Declined';
+                                }
+
+                                return (
+                                    <article key={application.id} className="surface-card p-5">
+                                        <div className="grid gap-5 md:grid-cols-[150px_1fr_auto] md:items-center">
+                                            <img src={propertyImage} alt={propertyTitle} className="h-36 w-full rounded-[8px] object-cover md:w-36" />
+                                            <div>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <h2 className="text-xl font-bold">{propertyTitle} (Unit {application.unit?.unit_number || '#'})</h2>
+                                                    <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-bold text-primary capitalize">{statusLabel}</span>
+                                                </div>
+                                                <p className="mt-1 text-muted-foreground">{neighborhood}, {city}</p>
+                                                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                                                    <div className="rounded-[8px] bg-muted p-3">
+                                                        <p className="text-xs font-bold text-muted-foreground">Rent</p>
+                                                        <p className="font-bold">{formatUsdc(rent)} USDC</p>
+                                                    </div>
+                                                    <div className="rounded-[8px] bg-muted p-3">
+                                                        <p className="text-xs font-bold text-muted-foreground">Deposit</p>
+                                                        <p className="font-bold">{formatUsdc(deposit)} USDC</p>
+                                                    </div>
+                                                    <div className="rounded-[8px] bg-muted p-3">
+                                                        <p className="text-xs font-bold text-muted-foreground">Escrow State</p>
+                                                        <p className="font-bold capitalize">{application.status === 'approved' ? 'Active' : 'Awaiting confirmation'}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
+                                                    <div className="h-full rounded-full bg-primary animate-[pulse_2s_infinite]" style={{ width: `${progressPercent}%` }} />
+                                                </div>
                                             </div>
-                                            <div className="rounded-[8px] bg-muted p-3">
-                                                <p className="text-xs font-bold text-muted-foreground">Deposit</p>
-                                                <p className="font-bold">{formatUsdc(application.property.deposit)} USDC</p>
-                                            </div>
-                                            <div className="rounded-[8px] bg-muted p-3">
-                                                <p className="text-xs font-bold text-muted-foreground">Escrow</p>
-                                                <p className="font-bold">{application.property.escrowState}</p>
+                                            <div className="flex flex-col gap-2 md:w-40">
+                                                <Link to={property ? `/properties/${property.id}` : '#'} className="primary-button py-2 text-xs flex justify-center items-center gap-2">
+                                                    <FileText className="h-4 w-4" />
+                                                    View Details
+                                                </Link>
+                                                <button className="secondary-button py-2 text-xs flex justify-center items-center gap-2">
+                                                    <Clock className="h-4 w-4" />
+                                                    Timeline
+                                                </button>
                                             </div>
                                         </div>
-                                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-muted">
-                                            <div className="h-full rounded-full bg-primary" style={{ width: `${application.progress}%` }} />
-                                        </div>
-                                    </div>
-                                    <div className="flex flex-col gap-2 md:w-40">
-                                        <button className="primary-button py-2 text-xs">
-                                            <FileText className="h-4 w-4" />
-                                            View
-                                        </button>
-                                        <button className="secondary-button py-2 text-xs">
-                                            <Clock className="h-4 w-4" />
-                                            Timeline
-                                        </button>
-                                    </div>
-                                </div>
-                            </article>
-                        ))}
+                                    </article>
+                                );
+                            })
+                        )}
                     </div>
 
                     <section className="mt-8 grid gap-4 md:grid-cols-2">

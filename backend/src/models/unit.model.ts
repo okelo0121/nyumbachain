@@ -10,21 +10,23 @@ export interface UnitAttributes {
   is_available?: boolean;
   floor_number?: number;
   square_meters?: number;
+  bathrooms?: number;
   created_at?: Date;
   updated_at?: Date;
 }
 
 export class Unit extends Model<UnitAttributes> implements UnitAttributes {
-  public id!: string;
-  public property_id!: string;
-  public unit_type!: 'studio' | 'bedsitter' | '1bed' | '2bed' | '3bed';
-  public monthly_rent_usdc!: number;
-  public deposit_usdc!: number;
-  public is_available!: boolean;
-  public floor_number?: number;
-  public square_meters?: number;
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare property_id: string;
+  declare unit_type: 'studio' | 'bedsitter' | '1bed' | '2bed' | '3bed';
+  declare monthly_rent_usdc: number;
+  declare deposit_usdc: number;
+  declare is_available: boolean;
+  declare floor_number?: number;
+  declare square_meters?: number;
+  declare bathrooms?: number;
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 Unit.init(
@@ -73,6 +75,11 @@ Unit.init(
         const value = this.getDataValue('square_meters');
         return value ? parseFloat(value as unknown as string) : undefined;
       },
+    },
+    bathrooms: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 1,
     },
   },
   {

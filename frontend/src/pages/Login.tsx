@@ -1,7 +1,42 @@
-import { Link } from 'react-router-dom';
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, LockKeyhole, Mail, ShieldCheck, WalletCards } from 'lucide-react';
+import { api } from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
 
 export default function Login() {
+    const navigate = useNavigate();
+    const setAuth = useAuthStore((state) => state.setAuth);
+    
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setError(null);
+        setLoading(true);
+
+        try {
+            const res = await api.post('/auth/login', { email, password });
+            const { accessToken, user } = res.data;
+            setAuth(accessToken, user);
+            
+            // Redirect based on user role
+            if (user.role === 'landlord') {
+                navigate('/landlord/dashboard');
+            } else {
+                navigate('/tenant/dashboard');
+            }
+        } catch (err: any) {
+            console.error('Login error:', err);
+            setError(err.response?.data?.error || 'Invalid email or password.');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <div className="grid min-h-screen bg-background lg:grid-cols-[1fr_0.9fr]">
             <section className="relative hidden overflow-hidden lg:block">
@@ -31,21 +66,41 @@ export default function Login() {
                             <p className="mt-2 text-muted-foreground">Access rental applications, landlord tools, and Stellar-backed payment history.</p>
                         </div>
 
-                        <form className="space-y-4">
+                        {error && (
+                            <div className="mb-4 rounded-[8px] bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <label className="block">
                                 <span className="mb-2 block text-sm font-bold">Email address</span>
                                 <span className="relative block">
                                     <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                    <input className="field pl-12" placeholder="you@example.com" type="email" />
+                                    <input 
+                                        className="field pl-12" 
+                                        placeholder="you@example.com" 
+                                        type="email"
+                                        value={email}
+                                        onChange={(e) => setEmail(e.target.value)}
+                                        required
+                                    />
                                 </span>
                             </label>
                             <label className="block">
                                 <span className="mb-2 block text-sm font-bold">Password</span>
-                                <input className="field" placeholder="Enter your password" type="password" />
+                                <input 
+                                    className="field" 
+                                    placeholder="Enter your password" 
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
                             </label>
 
-                            <button className="primary-button w-full" type="button">
-                                Sign in securely
+                            <button className="primary-button w-full animate-hover" type="submit" disabled={loading}>
+                                {loading ? 'Signing in...' : 'Sign in securely'}
                                 <ArrowRight className="h-4 w-4" />
                             </button>
                         </form>
@@ -56,7 +111,7 @@ export default function Login() {
                             <div className="h-px flex-1 bg-border" />
                         </div>
 
-                        <button className="secondary-button w-full" type="button">
+                        <button className="secondary-button w-full animate-hover" type="button">
                             <WalletCards className="h-4 w-4" />
                             Continue with Stellar wallet
                         </button>

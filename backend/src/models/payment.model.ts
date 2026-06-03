@@ -16,17 +16,17 @@ export interface PaymentAttributes {
 }
 
 export class Payment extends Model<PaymentAttributes> implements PaymentAttributes {
-  public id!: string;
-  public tenancy_id!: string;
-  public amount_usdc!: number;
-  public payment_type!: 'rent' | 'deposit' | 'deposit_return' | 'penalty';
-  public status!: 'pending' | 'executed' | 'failed';
-  public stellar_tx_hash?: string;
-  public due_date!: Date;
-  public executed_at?: Date;
-  public failure_reason?: string;
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare tenancy_id: string;
+  declare amount_usdc: number;
+  declare payment_type: 'rent' | 'deposit' | 'deposit_return' | 'penalty';
+  declare status: 'pending' | 'executed' | 'failed';
+  declare stellar_tx_hash?: string;
+  declare due_date: Date;
+  declare executed_at?: Date;
+  declare failure_reason?: string;
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 Payment.init(

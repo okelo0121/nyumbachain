@@ -13,7 +13,7 @@ const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefresh
 const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict' as const,
+  sameSite: 'lax' as const,
 };
 
 const REFRESH_COOKIE_OPTIONS = {
@@ -78,8 +78,8 @@ export const register = async (req: Request, res: Response) => {
     let stellar_wallet = req.body.stellar_wallet;
     let stellar_wallet_secret_encrypted = null;
 
-    // Generate custodial wallet keypair for tenant
-    if (role === 'tenant') {
+    // Generate custodial wallet keypair if not provided
+    if (!stellar_wallet) {
       const pair = Keypair.random();
       stellar_wallet = pair.publicKey();
       stellar_wallet_secret_encrypted = encrypt(pair.secret());

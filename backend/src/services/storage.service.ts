@@ -1,21 +1,15 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { v2 as cloudinary } from 'cloudinary';
 import { v4 as uuidv4 } from 'uuid';
-import path from 'path';
 
-const s3 = new S3Client({
-  region: 'auto',
-  endpoint: process.env.CLOUDFLARE_R2_ENDPOINT || '',
-  credentials: {
-    accessKeyId: process.env.CLOUDFLARE_R2_ACCESS_KEY || '',
-    secretAccessKey: process.env.CLOUDFLARE_R2_SECRET_KEY || '',
-  },
+// Configure Cloudinary
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
+  api_key: process.env.CLOUDINARY_API_KEY || '',
+  api_secret: process.env.CLOUDINARY_API_SECRET || '',
 });
 
-const BUCKET = process.env.CLOUDFLARE_R2_BUCKET || 'nyumbachain-photos';
-const CDN_URL = process.env.CLOUDFLARE_R2_CDN_URL || process.env.CLOUDFLARE_R2_ENDPOINT;
-
 /**
- * Upload a file buffer to R2 and return the CDN URL.
+ * Upload a file buffer to Cloudinary and return the secure CDN URL.
  * Validates MIME type — only image formats allowed.
  */
 export const uploadPhoto = async (
@@ -28,29 +22,45 @@ export const uploadPhoto = async (
     throw new Error('Invalid file type. Only JPEG, PNG, and WebP images are allowed.');
   }
 
-  const ext = path.extname(originalname).toLowerCase();
-  const key = `properties/${uuidv4()}${ext}`; // Random UUID key — never user-supplied filename
+  return new Promise((resolve, reject) => {
+    const uploadStream = cloudinary.uploader.upload_stream(
+      {
+        folder: 'nyumbachain',
+        public_id: `${uuidv4()}`,
+        resource_type: 'image',
+      },
+      (error, result) => {
+        if (error) {
+          console.error('Cloudinary upload error:', error);
+          reject(new Error('Failed to upload photo to Cloudinary.'));
+        } else if (result) {
+          resolve(result.secure_url);
+        } else {
+          reject(new Error('Unknown upload error occurred.'));
+        }
+      }
+    );
 
-  const command = new PutObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-    Body: fileBuffer,
-    ContentType: mimetype,
+    uploadStream.write(fileBuffer);
+    uploadStream.end();
   });
-
-  await s3.send(command);
-
-  return `${CDN_URL}/${key}`;
 };
 
 /**
- * Delete a photo from R2 by its URL.
+ * Delete a photo from Cloudinary by its URL.
  */
 export const deletePhoto = async (photoUrl: string): Promise<void> => {
-  const key = photoUrl.replace(`${CDN_URL}/`, '');
-  const command = new DeleteObjectCommand({
-    Bucket: BUCKET,
-    Key: key,
-  });
-  await s3.send(command);
+  try {
+    // Extract public ID from Cloudinary URL
+    // Format: https://res.cloudinary.com/[cloud_name]/image/upload/v[version]/[folder]/[public_id].[ext]
+    const parts = photoUrl.split('/');
+    const fileWithExt = parts.pop() || '';
+    const folder = parts.pop() || '';
+    const publicId = fileWithExt.split('.')[0];
+    const fullPublicId = `${folder}/${publicId}`;
+
+    await cloudinary.uploader.destroy(fullPublicId);
+  } catch (err) {
+    console.error('Cloudinary delete error:', err);
+  }
 };

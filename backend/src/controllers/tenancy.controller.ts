@@ -352,34 +352,54 @@ export const getMyTenancy = async (req: AuthenticatedRequest, res: Response) => 
       return res.status(401).json({ error: 'Not authenticated.' });
     }
 
-    const tenancy = await Tenancy.findOne({
-      where: { tenant_id: req.user.id, status: 'active' },
-      include: [
-        {
-          model: Unit,
-          as: 'unit',
-          include: [{ model: Property, as: 'property' }],
-        },
-        {
-          model: User,
-          as: 'landlord',
-          attributes: ['id', 'full_name', 'email', 'phone', 'stellar_wallet'],
-        },
-      ],
-    });
+    if (req.user.role === 'landlord') {
+      const tenancies = await Tenancy.findAll({
+        where: { landlord_id: req.user.id, status: 'active' },
+        include: [
+          {
+            model: Unit,
+            as: 'unit',
+            include: [{ model: Property, as: 'property' }],
+          },
+          {
+            model: User,
+            as: 'tenant',
+            attributes: ['id', 'full_name', 'email', 'phone', 'stellar_wallet'],
+          },
+        ],
+      });
+      return res.json({ tenancies });
+    } else {
+      const tenancy = await Tenancy.findOne({
+        where: { tenant_id: req.user.id, status: 'active' },
+        include: [
+          {
+            model: Unit,
+            as: 'unit',
+            include: [{ model: Property, as: 'property' }],
+          },
+          {
+            model: User,
+            as: 'landlord',
+            attributes: ['id', 'full_name', 'email', 'phone', 'stellar_wallet'],
+          },
+        ],
+      });
 
-    if (!tenancy) {
-      return res.status(404).json({ error: 'No active tenancy found.' });
+      if (!tenancy) {
+        return res.status(404).json({ error: 'No active tenancy found.' });
+      }
+
+      // Calculate next payment date
+      const today = new Date();
+      const nextPayment = new Date(today.getFullYear(), today.getMonth(), tenancy.payment_day);
+      if (nextPayment <= today) {
+        nextPayment.setMonth(nextPayment.getMonth() + 1);
+      }
+
+      return res.json({ tenancy, nextPaymentDate: nextPayment });
     }
 
-    // Calculate next payment date
-    const today = new Date();
-    const nextPayment = new Date(today.getFullYear(), today.getMonth(), tenancy.payment_day);
-    if (nextPayment <= today) {
-      nextPayment.setMonth(nextPayment.getMonth() + 1);
-    }
-
-    return res.json({ tenancy, nextPaymentDate: nextPayment });
   } catch (error) {
     console.error('Get tenancy error:', error);
     return res.status(500).json({ error: 'Server error retrieving tenancy.' });

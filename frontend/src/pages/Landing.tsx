@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { ArrowRight, CalendarCheck, MapPin, Menu, Search, ShieldCheck, Sparkles, WalletCards, X } from 'lucide-react';
 import { useState } from 'react';
-import { featuredProperties, formatUsdc } from '@/data/properties';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '@/services/api';
+import { formatUsdc } from '@/data/properties';
 
 const trustSignals = [
     { label: 'Protected deposits', value: '7-day inspection window' },
@@ -27,9 +29,48 @@ const steps = [
     },
 ];
 
+const defaultHeroProperty = {
+    title: 'Modern Rental Operating System',
+    image: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1400&q=80',
+};
+
 export default function Landing() {
-    const heroProperty = featuredProperties[0];
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+    // Fetch featured stays from backend (limit to 4 properties)
+    const { data: propertiesData, isLoading } = useQuery({
+        queryKey: ['featuredProperties'],
+        queryFn: () => api.get('/properties', { params: { limit: 4 } }).then((res) => res.data),
+    });
+
+    const properties = propertiesData?.properties || [];
+
+    const mappedProperties = properties.map((p: any) => {
+        const firstUnit = p.units?.[0];
+        let beds = 1;
+        if (firstUnit?.unit_type) {
+            const match = firstUnit.unit_type.match(/\d+/);
+            if (match) beds = parseInt(match[0], 10);
+        }
+        const photos = p.photos && p.photos.length > 0 ? p.photos : [
+            'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=80'
+        ];
+        return {
+            id: p.id,
+            title: p.title,
+            neighborhood: p.address ? p.address.split(',')[0] : 'Neighborhood',
+            city: p.city,
+            price: firstUnit ? Number(firstUnit.monthly_rent_usdc) : 0,
+            beds,
+            baths: firstUnit?.bathrooms ?? 1,
+            sqm: firstUnit ? Number(firstUnit.square_meters || 50) : 50,
+            rating: 4.9,
+            available: firstUnit ? firstUnit.is_available : true,
+            image: photos[0],
+        };
+    });
+
+    const heroProperty = mappedProperties[0] || defaultHeroProperty;
 
     return (
         <div className="min-h-screen bg-background">
@@ -150,35 +191,45 @@ export default function Landing() {
                         </Link>
                     </div>
 
-                    <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-                        {featuredProperties.map((property) => (
-                            <Link key={property.id} to={`/properties/${property.id}`} className="group">
-                                <article className="overflow-hidden">
-                                    <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-muted">
-                                        <img
-                                            src={property.image}
-                                            alt={property.title}
-                                            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                        />
-                                        <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-primary shadow-sm">
-                                            {property.available ? 'Available now' : 'Waitlist'}
-                                        </span>
-                                    </div>
-                                    <div className="pt-4">
-                                        <div className="flex items-start justify-between gap-3">
-                                            <div>
-                                                <h3 className="font-bold">{property.title}</h3>
-                                                <p className="text-sm text-muted-foreground">{property.neighborhood}, {property.city}</p>
-                                            </div>
-                                            <span className="text-sm font-bold">{property.rating}</span>
+                    {isLoading ? (
+                        <div className="flex h-64 items-center justify-center">
+                            <div className="h-10 w-10 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                        </div>
+                    ) : mappedProperties.length > 0 ? (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+                            {mappedProperties.map((property: any) => (
+                                <Link key={property.id} to={`/properties/${property.id}`} className="group">
+                                    <article className="overflow-hidden">
+                                        <div className="relative aspect-[4/3] overflow-hidden rounded-[8px] bg-muted">
+                                            <img
+                                                src={property.image}
+                                                alt={property.title}
+                                                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                            />
+                                            <span className="absolute left-3 top-3 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-primary shadow-sm">
+                                                {property.available ? 'Available now' : 'Waitlist'}
+                                            </span>
                                         </div>
-                                        <p className="mt-2 text-sm text-muted-foreground">{property.beds} beds · {property.baths} baths · {property.sqm} sqm</p>
-                                        <p className="mt-2 font-bold">{formatUsdc(property.price)} USDC <span className="font-normal text-muted-foreground">/ month</span></p>
-                                    </div>
-                                </article>
-                            </Link>
-                        ))}
-                    </div>
+                                        <div className="pt-4">
+                                            <div className="flex items-start justify-between gap-3">
+                                                <div>
+                                                    <h3 className="font-bold">{property.title}</h3>
+                                                    <p className="text-sm text-muted-foreground">{property.neighborhood}, {property.city}</p>
+                                                </div>
+                                                <span className="text-sm font-bold">{property.rating}</span>
+                                            </div>
+                                            <p className="mt-2 text-sm text-muted-foreground">{property.beds} beds · {property.baths} baths · {property.sqm} sqm</p>
+                                            <p className="mt-2 font-bold">{formatUsdc(property.price)} USDC <span className="font-normal text-muted-foreground">/ month</span></p>
+                                        </div>
+                                    </article>
+                                </Link>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="surface-card p-12 text-center text-muted-foreground">
+                            No stays listed yet.
+                        </div>
+                    )}
                 </section>
 
                 <section id="how-it-works" className="bg-white py-20">

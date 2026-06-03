@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../middleware/auth';
 import { Property } from '../models';
 import { uploadPhoto } from '../services/storage.service';
+import { invalidateSearchCache } from '../middleware/cache';
 
 export const uploadPhotos = async (req: AuthenticatedRequest, res: Response) => {
   try {
@@ -33,6 +34,8 @@ export const uploadPhotos = async (req: AuthenticatedRequest, res: Response) => 
     const allPhotos = [...existingPhotos, ...uploadedUrls];
 
     await property.update({ photos: allPhotos });
+
+    await invalidateSearchCache();
 
     return res.json({
       message: `${uploadedUrls.length} photo(s) uploaded successfully.`,

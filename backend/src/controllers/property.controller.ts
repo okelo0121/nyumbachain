@@ -5,18 +5,27 @@ import { AuthenticatedRequest } from '../middleware/auth';
 import { geocodeAddress } from '../utils/geocoder';
 import { sequelize } from '../config/db.config';
 import { Op } from 'sequelize';
+import { invalidateSearchCache } from '../middleware/cache';
 
 // Validation Schemas
 export const createPropertySchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters long'),
   description: z.string().optional(),
-  address: z.string().min(5, 'Address must be at least 5 characters long'),
+  address: z.string().min(5, 'Address must be at least 5 characters long').optional(),
+  neighborhood: z.string().optional(),
   city: z.string().min(2, 'City must be at least 2 characters long'),
   latitude: z.number().optional(),
   longitude: z.number().optional(),
   property_type: z.enum(['apartment', 'house', 'studio', 'bedsitter']),
   amenities: z.array(z.string()).optional(),
   photos: z.array(z.string()).optional(),
+  // Unit details for dual-creation
+  monthly_rent_usdc: z.number().positive('Rent must be a positive number').optional(),
+  deposit_usdc: z.number().positive('Deposit must be a positive number').optional(),
+  unit_type: z.enum(['studio', 'bedsitter', '1bed', '2bed', '3bed']).optional(),
+  bedrooms: z.number().optional(),
+  bathrooms: z.number().optional(),
+  square_meters: z.number().positive().optional(),
 });
 
 export const updatePropertySchema = createPropertySchema.partial();
@@ -28,6 +37,7 @@ export const createUnitSchema = z.object({
   deposit_usdc: z.number().positive('Deposit must be a positive number'),
   floor_number: z.number().int().optional(),
   square_meters: z.number().positive().optional(),
+  bathrooms: z.number().optional(),
 });
 
 export const updateUnitSchema = createUnitSchema.omit({ property_id: true }).partial().extend({
@@ -36,19 +46,44 @@ export const updateUnitSchema = createUnitSchema.omit({ property_id: true }).par
 
 // Controllers
 export const createProperty = async (req: AuthenticatedRequest, res: Response) => {
+  const t = await sequelize.transaction();
   try {
     if (!req.user || req.user.role !== 'landlord') {
+      await t.rollback();
       return res.status(403).json({ error: 'Only landlords can list properties.' });
     }
 
-    const { title, description, address, city, property_type, amenities, photos } = req.body;
-    let { latitude, longitude } = req.body;
+    const {
+      title,
+      description,
+      city,
+      neighborhood,
+      property_type,
+      amenities,
+      photos,
+      monthly_rent_usdc,
+      deposit_usdc,
+      unit_type,
+      bedrooms,
+      bathrooms,
+      square_meters,
+    } = req.body;
+    let { address, latitude, longitude } = req.body;
+
+    if (!address) {
+      address = neighborhood ? `${neighborhood}, ${city}` : city;
+    }
 
     // Call geocoding if coords are missing
     if (latitude === undefined || longitude === undefined) {
-      const coords = await geocodeAddress(address, city);
-      latitude = coords.latitude;
-      longitude = coords.longitude;
+      try {
+        const coords = await geocodeAddress(address, city);
+        latitude = coords.latitude;
+        longitude = coords.longitude;
+      } catch (err) {
+        latitude = -1.2921; // Nairobi default
+        longitude = 36.8219;
+      }
     }
 
     const property = await Property.create({
@@ -63,12 +98,48 @@ export const createProperty = async (req: AuthenticatedRequest, res: Response) =
       amenities: amenities || [],
       photos: photos || [],
       is_active: true,
+    }, { transaction: t });
+
+    // Create the default unit if terms are provided
+    if (monthly_rent_usdc !== undefined && deposit_usdc !== undefined) {
+      let finalUnitType: 'studio' | 'bedsitter' | '1bed' | '2bed' | '3bed' = '1bed';
+      if (unit_type) {
+        finalUnitType = unit_type;
+      } else if (bedrooms !== undefined) {
+        if (bedrooms === 0) finalUnitType = 'studio';
+        else if (bedrooms === 1) finalUnitType = '1bed';
+        else if (bedrooms === 2) finalUnitType = '2bed';
+        else if (bedrooms >= 3) finalUnitType = '3bed';
+      } else if (property_type === 'studio') {
+        finalUnitType = 'studio';
+      } else if (property_type === 'bedsitter') {
+        finalUnitType = 'bedsitter';
+      }
+
+      await Unit.create({
+        property_id: property.id,
+        unit_type: finalUnitType,
+        monthly_rent_usdc,
+        deposit_usdc,
+        is_available: true,
+        square_meters: square_meters || undefined,
+        bathrooms: bathrooms || 1,
+      }, { transaction: t });
+    }
+
+    await t.commit();
+
+    const fullProperty = await Property.findByPk(property.id, {
+      include: [{ model: Unit, as: 'units' }],
     });
 
-    return res.status(201).json(property);
-  } catch (error) {
+    await invalidateSearchCache();
+
+    return res.status(201).json(fullProperty);
+  } catch (error: any) {
+    await t.rollback();
     console.error('Create property error:', error);
-    return res.status(500).json({ error: 'Server error during property creation.' });
+    return res.status(500).json({ error: error.message || 'Server error during property creation.' });
   }
 };
 
@@ -126,6 +197,7 @@ export const updateProperty = async (req: AuthenticatedRequest, res: Response) =
     }
 
     await property.update(updateData);
+    await invalidateSearchCache();
     return res.json(property);
   } catch (error) {
     console.error('Update property error:', error);
@@ -148,6 +220,7 @@ export const deleteProperty = async (req: AuthenticatedRequest, res: Response) =
 
     // Soft delete
     await property.update({ is_active: false });
+    await invalidateSearchCache();
     return res.json({ message: 'Property deleted successfully.' });
   } catch (error) {
     console.error('Delete property error:', error);
@@ -170,10 +243,15 @@ export const searchProperties = async (req: AuthenticatedRequest, res: Response)
       sort,
       page = 1,
       limit = 12,
+      landlord_id,
     } = req.query;
 
     const offset = (Number(page) - 1) * Number(limit);
     const whereClause: any = { is_active: true };
+
+    if (landlord_id) {
+      whereClause.landlord_id = landlord_id;
+    }
 
     if (city) {
       whereClause[Op.or] = [
@@ -300,6 +378,8 @@ export const addUnit = async (req: AuthenticatedRequest, res: Response) => {
       is_available: true,
     });
 
+    await invalidateSearchCache();
+
     return res.status(201).json(unit);
   } catch (error) {
     console.error('Add unit error:', error);
@@ -325,6 +405,7 @@ export const updateUnit = async (req: AuthenticatedRequest, res: Response) => {
     }
 
     await unit.update(req.body);
+    await invalidateSearchCache();
     return res.json(unit);
   } catch (error) {
     console.error('Update unit error:', error);

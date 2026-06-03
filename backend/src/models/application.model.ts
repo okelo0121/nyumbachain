@@ -12,13 +12,13 @@ export interface ApplicationAttributes {
 }
 
 export class Application extends Model<ApplicationAttributes> implements ApplicationAttributes {
-  public id!: string;
-  public unit_id!: string;
-  public tenant_id!: string;
-  public message?: string;
-  public status!: 'pending' | 'approved' | 'rejected';
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare unit_id: string;
+  declare tenant_id: string;
+  declare message?: string;
+  declare status: 'pending' | 'approved' | 'rejected';
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 Application.init(

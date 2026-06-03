@@ -19,20 +19,20 @@ export interface TenancyAttributes {
 }
 
 export class Tenancy extends Model<TenancyAttributes> implements TenancyAttributes {
-  public id!: string;
-  public unit_id!: string;
-  public tenant_id!: string;
-  public landlord_id!: string;
-  public start_date!: Date;
-  public end_date?: Date;
-  public payment_day!: number;
-  public monthly_rent_usdc!: number;
-  public deposit_usdc!: number;
-  public escrow_contract_id?: string;
-  public escrow_wallet_address?: string;
-  public status!: 'active' | 'ending' | 'ended' | 'disputed';
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare unit_id: string;
+  declare tenant_id: string;
+  declare landlord_id: string;
+  declare start_date: Date;
+  declare end_date?: Date;
+  declare payment_day: number;
+  declare monthly_rent_usdc: number;
+  declare deposit_usdc: number;
+  declare escrow_contract_id?: string;
+  declare escrow_wallet_address?: string;
+  declare status: 'active' | 'ending' | 'ended' | 'disputed';
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 Tenancy.init(

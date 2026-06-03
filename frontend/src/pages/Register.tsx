@@ -1,12 +1,62 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowRight, Building2, Mail, Phone, User, WalletCards } from 'lucide-react';
+import { api } from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
 import { cn } from '@/utils/cn';
 
 type Role = 'tenant' | 'landlord';
 
 export default function Register() {
+    const navigate = useNavigate();
+    const setAuth = useAuthStore((state) => state.setAuth);
+
     const [role, setRole] = useState<Role>('tenant');
+    const [fullName, setFullName] = useState('');
+    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
+    const [stellarWallet, setStellarWallet] = useState('');
+    const [password, setPassword] = useState('');
+    const [error, setError] = useState<string | null>(null);
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (event: React.FormEvent) => {
+        event.preventDefault();
+        setError(null);
+        setLoading(true);
+
+        try {
+            const payload = {
+                email,
+                password,
+                role,
+                full_name: fullName,
+                phone: phone || undefined,
+                stellar_wallet: stellarWallet || undefined,
+            };
+
+            const res = await api.post('/auth/register', payload);
+            const { accessToken, user } = res.data;
+            setAuth(accessToken, user);
+
+            if (user.role === 'landlord') {
+                navigate('/landlord/dashboard');
+            } else {
+                navigate('/tenant/dashboard');
+            }
+        } catch (err: any) {
+            console.error('Registration error:', err);
+            const data = err.response?.data;
+            if (data?.details && Array.isArray(data.details)) {
+                const messages = data.details.map((d: any) => `${d.field}: ${d.message}`).join(', ');
+                setError(`Validation failed: ${messages}`);
+            } else {
+                setError(data?.error || 'Failed to create account.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <div className="grid min-h-screen bg-background lg:grid-cols-[0.9fr_1fr]">
@@ -40,12 +90,24 @@ export default function Register() {
                             ))}
                         </div>
 
-                        <form className="space-y-4">
+                        {error && (
+                            <div className="mb-4 rounded-[8px] bg-destructive/10 p-3 text-sm font-semibold text-destructive">
+                                {error}
+                            </div>
+                        )}
+
+                        <form onSubmit={handleSubmit} className="space-y-4">
                             <label className="block">
                                 <span className="mb-2 block text-sm font-bold">Full name</span>
                                 <span className="relative block">
                                     <User className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                    <input className="field pl-12" placeholder="Enter your full name" />
+                                    <input 
+                                        className="field pl-12" 
+                                        placeholder="Enter your full name"
+                                        value={fullName}
+                                        onChange={(e) => setFullName(e.target.value)}
+                                        required
+                                    />
                                 </span>
                             </label>
                             <div className="grid gap-4 sm:grid-cols-2">
@@ -53,31 +115,59 @@ export default function Register() {
                                     <span className="mb-2 block text-sm font-bold">Email</span>
                                     <span className="relative block">
                                         <Mail className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                        <input className="field pl-12" placeholder="you@example.com" type="email" />
+                                        <input 
+                                            className="field pl-12" 
+                                            placeholder="you@example.com" 
+                                            type="email" 
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                        />
                                     </span>
                                 </label>
                                 <label className="block">
                                     <span className="mb-2 block text-sm font-bold">Phone</span>
                                     <span className="relative block">
                                         <Phone className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                        <input className="field pl-12" placeholder="+256..." />
+                                        <input 
+                                            className="field pl-12" 
+                                            placeholder="+256..." 
+                                            value={phone}
+                                            onChange={(e) => setPhone(e.target.value)}
+                                        />
                                     </span>
                                 </label>
                             </div>
+                            
                             <label className="block">
-                                <span className="mb-2 block text-sm font-bold">Stellar wallet</span>
+                                <span className="mb-2 block text-sm font-bold">
+                                    Stellar public key (optional - will auto-generate custodial wallet if empty)
+                                </span>
                                 <span className="relative block">
                                     <WalletCards className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                                    <input className="field pl-12 font-mono" placeholder="G..." />
+                                    <input 
+                                        className="field pl-12 font-mono" 
+                                        placeholder="G..." 
+                                        value={stellarWallet}
+                                        onChange={(e) => setStellarWallet(e.target.value)}
+                                    />
                                 </span>
                             </label>
+                            
                             <label className="block">
                                 <span className="mb-2 block text-sm font-bold">Password</span>
-                                <input className="field" placeholder="Create a password" type="password" />
+                                <input 
+                                    className="field" 
+                                    placeholder="Create a password" 
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
                             </label>
 
-                            <button className="primary-button w-full" type="button">
-                                Create {role} account
+                            <button className="primary-button w-full animate-hover" type="submit" disabled={loading}>
+                                {loading ? 'Creating account...' : `Create ${role} account`}
                                 <ArrowRight className="h-4 w-4" />
                             </button>
                         </form>

@@ -1,4 +1,8 @@
+import { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { api } from '@/services/api';
+import { useAuthStore } from '@/stores/authStore';
+import ProtectedRoute from '@/components/shared/ProtectedRoute';
 
 // Public pages
 import Landing from '@/pages/Landing';
@@ -20,6 +24,34 @@ import TenantApplications from '@/pages/TenantApplications';
 import TenantWallet from '@/pages/TenantWallet';
 
 export default function App() {
+    const [isLoading, setIsLoading] = useState(true);
+    const setAuth = useAuthStore((state) => state.setAuth);
+    const logout = useAuthStore((state) => state.logout);
+
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                // Trigger token refresh using HttpOnly cookie session
+                const res = await api.post('/auth/refresh');
+                const token = res.data.accessToken;
+
+                // Retrieve profile information
+                const userRes = await api.get('/auth/me', {
+                    headers: { Authorization: `Bearer ${token}` },
+                });
+
+                setAuth(token, userRes.data);
+            } catch (err) {
+                console.log('[Auth] No active session found.');
+                logout();
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        checkSession();
+    }, [setAuth, logout]);
+
     return (
         <Routes>
             {/* Public */}
@@ -29,17 +61,21 @@ export default function App() {
             <Route path="/search" element={<Search />} />
             <Route path="/properties/:id" element={<PropertyDetail />} />
 
-            {/* Landlord */}
-            <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
-            <Route path="/landlord/properties" element={<LandlordProperties />} />
-            <Route path="/landlord/properties/new" element={<NewProperty />} />
-            <Route path="/landlord/applications" element={<LandlordApplications />} />
-            <Route path="/landlord/tenants" element={<LandlordTenants />} />
+            {/* Landlord Private Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['landlord']} isLoading={isLoading} />}>
+                <Route path="/landlord/dashboard" element={<LandlordDashboard />} />
+                <Route path="/landlord/properties" element={<LandlordProperties />} />
+                <Route path="/landlord/properties/new" element={<NewProperty />} />
+                <Route path="/landlord/applications" element={<LandlordApplications />} />
+                <Route path="/landlord/tenants" element={<LandlordTenants />} />
+            </Route>
 
-            {/* Tenant */}
-            <Route path="/tenant/dashboard" element={<TenantDashboard />} />
-            <Route path="/tenant/applications" element={<TenantApplications />} />
-            <Route path="/tenant/wallet" element={<TenantWallet />} />
+            {/* Tenant Private Routes */}
+            <Route element={<ProtectedRoute allowedRoles={['tenant']} isLoading={isLoading} />}>
+                <Route path="/tenant/dashboard" element={<TenantDashboard />} />
+                <Route path="/tenant/applications" element={<TenantApplications />} />
+                <Route path="/tenant/wallet" element={<TenantWallet />} />
+            </Route>
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

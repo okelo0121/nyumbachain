@@ -19,20 +19,20 @@ export interface PropertyAttributes {
 }
 
 export class Property extends Model<PropertyAttributes> implements PropertyAttributes {
-  public id!: string;
-  public landlord_id!: string;
-  public title!: string;
-  public description?: string;
-  public address!: string;
-  public city!: string;
-  public latitude!: number;
-  public longitude!: number;
-  public property_type!: 'apartment' | 'house' | 'studio' | 'bedsitter';
-  public amenities?: string[];
-  public photos?: string[];
-  public is_active!: boolean;
-  public readonly created_at!: Date;
-  public readonly updated_at!: Date;
+  declare id: string;
+  declare landlord_id: string;
+  declare title: string;
+  declare description?: string;
+  declare address: string;
+  declare city: string;
+  declare latitude: number;
+  declare longitude: number;
+  declare property_type: 'apartment' | 'house' | 'studio' | 'bedsitter';
+  declare amenities?: string[];
+  declare photos?: string[];
+  declare is_active: boolean;
+  declare readonly created_at: Date;
+  declare readonly updated_at: Date;
 }
 
 Property.init(
