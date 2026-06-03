@@ -1,9 +1,10 @@
-import { CalendarClock, CircleDollarSign, Mail, ShieldCheck, Users } from 'lucide-react';
+import { CalendarClock, CircleDollarSign, Mail, ShieldCheck, Users, AlertTriangle } from 'lucide-react';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
 import { formatUsdc } from '@/data/properties';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/stores/authStore';
+import { useState } from 'react';
 
 const landlordItems = [
     { icon: 'dashboard', label: 'Overview', href: '/landlord/dashboard' },
@@ -16,9 +17,11 @@ const landlordItems = [
 
 export default function LandlordTenants() {
     const { user } = useAuthStore();
+    const queryClient = useQueryClient();
+    const [graceDayInputs, setGraceDayInputs] = useState<Record<string, number>>({});
 
-    const formattedWallet = user?.stellar_wallet 
-        ? `${user.stellar_wallet.slice(0, 6)}...${user.stellar_wallet.slice(-6)}` 
+    const formattedWallet = user?.stellar_wallet
+        ? `${user.stellar_wallet.slice(0, 6)}...${user.stellar_wallet.slice(-6)}`
         : 'No wallet';
 
     // Fetch landlord's active tenancies
@@ -29,6 +32,12 @@ export default function LandlordTenants() {
     });
 
     const tenancies = tenanciesData?.tenancies || [];
+
+    const graceMutation = useMutation({
+        mutationFn: ({ tenancyId, days }: { tenancyId: string; days: number }) =>
+            api.put(`/tenancies/${tenancyId}/grace-days`, { days }).then((r) => r.data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['landlordTenancies'] }),
+    });
 
     if (isLoading) {
         return (
@@ -107,10 +116,46 @@ export default function LandlordTenants() {
                                                 <CircleDollarSign className="h-4 w-4" />
                                                 {formatUsdc(rent)} USDC
                                             </p>
-                                            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
-                                                <ShieldCheck className="h-4 w-4" />
-                                                <span className="capitalize">{tenancy.status}</span>
-                                            </span>
+                                            <div className="flex flex-col gap-2">
+                                                <span className="inline-flex w-fit items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-bold text-primary">
+                                                    <ShieldCheck className="h-4 w-4" />
+                                                    <span className="capitalize">{tenancy.status}</span>
+                                                </span>
+
+                                                {/* Grace days control — only on active leases with a contract */}
+                                                {tenancy.status === 'active' && tenancy.escrow_contract_id && (
+                                                    <div className="flex items-center gap-2">
+                                                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                                                        <span className="text-xs text-muted-foreground">Grace days:</span>
+                                                        <select
+                                                            className="rounded border border-border bg-background px-1.5 py-0.5 text-xs font-semibold"
+                                                            value={graceDayInputs[tenancy.id] ?? 3}
+                                                            onChange={(e) =>
+                                                                setGraceDayInputs((prev) => ({
+                                                                    ...prev,
+                                                                    [tenancy.id]: Number(e.target.value),
+                                                                }))
+                                                            }
+                                                        >
+                                                            {[1, 2, 3, 4, 5, 6, 7].map((d) => (
+                                                                <option key={d} value={d}>{d}d</option>
+                                                            ))}
+                                                        </select>
+                                                        <button
+                                                            className="rounded bg-primary px-2 py-0.5 text-xs font-bold text-white disabled:opacity-50"
+                                                            disabled={graceMutation.isPending}
+                                                            onClick={() =>
+                                                                graceMutation.mutate({
+                                                                    tenancyId: tenancy.id,
+                                                                    days: graceDayInputs[tenancy.id] ?? 3,
+                                                                })
+                                                            }
+                                                        >
+                                                            {graceMutation.isPending ? 'Saving…' : 'Set'}
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })}
