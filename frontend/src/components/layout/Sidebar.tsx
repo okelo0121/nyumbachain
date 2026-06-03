@@ -110,9 +110,14 @@ export function Sidebar({ items, user }: SidebarProps) {
 }
 
 export function MobileNav({ items }: { items: SidebarItem[] }) {
+    // Limit to 5 items on mobile. For landlords (6 items), filter out 'Add Property' (icon: 'add') 
+    // to fit within the standard 5-tab bar and ensure 'Settings' remains accessible.
+    const filteredItems = items.filter((item) => item.icon !== 'add');
+    const displayItems = filteredItems.slice(0, 5);
+
     return (
         <nav className="fixed bottom-0 left-0 right-0 z-40 flex justify-around border-t border-border bg-white/95 px-2 py-2 shadow-[0_-18px_36px_rgba(18,29,45,0.08)] backdrop-blur-xl md:hidden">
-            {items.slice(0, 5).map((item) => {
+            {displayItems.map((item) => {
                 const Icon = getIcon(item.icon);
                 return (
                     <Link

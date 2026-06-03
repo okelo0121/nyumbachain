@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { ShieldCheck, User, Wallet, Bell, Mail, Phone } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ShieldCheck, User, Wallet, Bell, Mail, Phone, LogOut } from 'lucide-react';
 import { Sidebar, MobileNav } from '@/components/layout/Sidebar';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -21,9 +22,15 @@ const tenantItems = [
 ];
 
 export default function Settings() {
-    const { user } = useAuthStore();
+    const { user, logout } = useAuthStore();
+    const navigate = useNavigate();
     const isLandlord = user?.role === 'landlord';
     const sidebarItems = isLandlord ? landlordItems : tenantItems;
+
+    const handleLogout = () => {
+        logout();
+        navigate('/');
+    };
 
     const formattedWallet = user?.stellar_wallet 
         ? `${user.stellar_wallet.slice(0, 6)}...${user.stellar_wallet.slice(-6)}` 
@@ -137,6 +144,27 @@ export default function Settings() {
                                         className="h-5 w-5 rounded border-gray-300 text-primary focus:ring-primary"
                                     />
                                 </div>
+                            </div>
+                        </section>
+
+                        {/* Account Actions */}
+                        <section className="surface-card p-6 border border-error/20 bg-error/5">
+                            <div className="flex items-center gap-3 border-b border-error/10 pb-4">
+                                <LogOut className="h-5 w-5 text-error" />
+                                <h2 className="text-xl font-bold text-error">Account Actions</h2>
+                            </div>
+                            <div className="mt-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                                <div>
+                                    <p className="font-bold text-foreground">Sign out of your account</p>
+                                    <p className="text-xs text-muted-foreground">This will end your session on this device and return you to the homepage.</p>
+                                </div>
+                                <button 
+                                    onClick={handleLogout}
+                                    className="flex items-center justify-center gap-2 rounded-full border border-border bg-white hover:bg-error/5 hover:border-error/30 text-error px-6 py-2.5 text-sm font-bold shadow-sm transition-all"
+                                >
+                                    <LogOut className="h-4 w-4" />
+                                    Log out
+                                </button>
                             </div>
                         </section>
                     </div>
