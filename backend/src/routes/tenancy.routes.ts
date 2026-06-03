@@ -10,7 +10,10 @@ import {
   getEscrowBalance,
   endLease,
   claimDeposit,
+  releaseDeposit,
+  setGraceDays,
   createApplicationSchema,
+  setGraceDaysSchema,
 } from '../controllers/tenancy.controller';
 import { authenticateJWT, authorizeRoles } from '../middleware/auth';
 import { validateRequest } from '../middleware/validate';
@@ -76,6 +79,23 @@ tenancyRouter.post(
   authenticateJWT,
   authorizeRoles('landlord'),
   claimDeposit
+);
+
+// Landlord: release deposit back to tenant after inspection window
+tenancyRouter.post(
+  '/:id/release-deposit',
+  authenticateJWT,
+  authorizeRoles('landlord'),
+  releaseDeposit
+);
+
+// Landlord: adjust grace days (1–7) on an active tenancy's escrow contract
+tenancyRouter.put(
+  '/:id/grace-days',
+  authenticateJWT,
+  authorizeRoles('landlord'),
+  validateRequest(setGraceDaysSchema),
+  setGraceDays
 );
 
 export { applicationRouter, tenancyRouter };

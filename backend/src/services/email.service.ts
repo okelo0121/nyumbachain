@@ -186,4 +186,30 @@ export const emailService = {
       `,
     });
   },
+
+  /**
+   * Notify tenant their deposit has been returned.
+   */
+  sendDepositReturned: async (
+    tenantEmail: string,
+    tenantName: string,
+    landlordName: string,
+    depositUsdc: number,
+    txHash: string
+  ) => {
+    const stellarExpertUrl = txHash
+      ? `https://stellar.expert/explorer/testnet/tx/${txHash}`
+      : null;
+    await sendEmail({
+      to: tenantEmail,
+      subject: `Your deposit of ${depositUsdc} USDC has been returned`,
+      html: `
+        <h2>Deposit Returned</h2>
+        <p>Hi ${tenantName},</p>
+        <p>Your security deposit of <strong>${depositUsdc} USDC</strong> has been released back to your Stellar wallet by ${landlordName}.</p>
+        ${stellarExpertUrl ? `<p><strong>Transaction:</strong> <a href="${stellarExpertUrl}">${txHash}</a></p>` : ''}
+        <p>Thank you for using NyumbaChain.</p>
+      `,
+    });
+  },
 };
