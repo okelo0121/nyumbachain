@@ -20,6 +20,10 @@ export const createApplicationSchema = z.object({
   message: z.string().max(1000).optional(),
 });
 
+export const setGraceDaysSchema = z.object({
+  days: z.number().int().min(1).max(7),
+});
+
 // Controllers
 
 /**
@@ -456,11 +460,15 @@ export const getEscrowBalance = async (req: AuthenticatedRequest, res: Response)
     const balanceStroops = await stellarService.getContractBalance(tenancy.escrow_contract_id);
     const balanceUsdc = Number(balanceStroops) / 1e7;
 
+    const graceStatus = await stellarService.getGracePeriodStatus(tenancy.escrow_contract_id);
+
     return res.json({
       balance_usdc: balanceUsdc,
       balance_stroops: String(balanceStroops),
       monthly_rent_usdc: tenancy.monthly_rent_usdc,
       deposit_usdc: tenancy.deposit_usdc,
+      in_grace_period: graceStatus.inGrace,
+      days_overdue: graceStatus.daysOverdue,
     });
   } catch (error) {
     console.error('Get balance error:', error);
@@ -555,5 +563,93 @@ export const claimDeposit = async (req: AuthenticatedRequest, res: Response) => 
   } catch (error) {
     console.error('Claim deposit error:', error);
     return res.status(500).json({ error: 'Server error claiming deposit.' });
+  }
+};
+
+/**
+ * POST /api/tenancies/:id/release-deposit
+ * Landlord releases deposit back to tenant after the 7-day inspection window.
+ */
+export const releaseDeposit = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) {
+      return res.status(401).json({ error: 'Unauthorized.' });
+    }
+
+    const { id } = req.params;
+    const tenancy = await Tenancy.findByPk(id);
+
+    if (!tenancy || tenancy.landlord_id !== req.user.id) {
+      return res.status(404).json({ error: 'Tenancy not found or unauthorized.' });
+    }
+
+    if (tenancy.status !== 'ending') {
+      return res.status(400).json({ error: 'Tenancy is not in ending state.' });
+    }
+
+    let txHash: string | null = null;
+    if (tenancy.escrow_contract_id) {
+      txHash = await stellarService.releaseDeposit(tenancy.escrow_contract_id);
+    }
+
+    await tenancy.update({ status: 'ended' });
+
+    await Payment.create({
+      tenancy_id: tenancy.id!,
+      amount_usdc: tenancy.deposit_usdc,
+      payment_type: 'deposit_return',
+      status: 'executed',
+      stellar_tx_hash: txHash ?? undefined,
+      due_date: new Date(),
+      executed_at: new Date(),
+    });
+
+    const tenant = await User.findByPk(tenancy.tenant_id, { attributes: ['email', 'full_name'] });
+    const landlord = await User.findByPk(req.user.id, { attributes: ['full_name'] });
+    if (tenant && landlord) {
+      await emailService.sendDepositReturned(
+        tenant.email,
+        tenant.full_name,
+        landlord.full_name,
+        tenancy.deposit_usdc,
+        txHash || ''
+      );
+    }
+
+    return res.json({ message: 'Deposit released to tenant.', tx_hash: txHash });
+  } catch (error) {
+    console.error('Release deposit error:', error);
+    return res.status(500).json({ error: 'Server error releasing deposit.' });
+  }
+};
+
+/**
+ * PUT /api/tenancies/:id/grace-days
+ * Landlord sets the grace period (1–7 days) on the escrow contract.
+ */
+export const setGraceDays = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
+
+    const { id } = req.params;
+    const { days } = req.body;
+
+    const tenancy = await Tenancy.findByPk(id);
+    if (!tenancy || tenancy.landlord_id !== req.user.id) {
+      return res.status(404).json({ error: 'Tenancy not found or unauthorized.' });
+    }
+    if (tenancy.status !== 'active') {
+      return res.status(400).json({ error: 'Can only adjust grace days on an active tenancy.' });
+    }
+    if (!tenancy.escrow_contract_id) {
+      return res.status(400).json({ error: 'No escrow contract deployed for this tenancy.' });
+    }
+
+    const txHash = await stellarService.setGraceDays(tenancy.escrow_contract_id, days);
+
+    return res.json({ message: `Grace period updated to ${days} day(s).`, tx_hash: txHash });
+  } catch (error) {
+    console.error('Set grace days error:', error);
+    return res.status(500).json({ error: 'Server error updating grace days.' });
   }
 };

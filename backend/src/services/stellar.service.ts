@@ -50,7 +50,7 @@ export const stellarService = {
     const admin = getAdminKeypair();
     const wasmPath = path.join(
       __dirname,
-      '../../../contracts/escrow/target/wasm32-unknown-unknown/release/nyumbachain_escrow.wasm'
+      '../../../contracts/target/wasm32-unknown-unknown/release/nyumbachain_escrow.wasm'
     );
 
     if (!fs.existsSync(wasmPath)) {
@@ -256,6 +256,87 @@ export const stellarService = {
 
     console.log(`[Stellar] claim_deposit tx: ${result.hash}`);
     return result.hash;
+  },
+
+  /**
+   * Call release_deposit() — admin releases deposit back to tenant after inspection window.
+   */
+  releaseDeposit: async (contractId: string): Promise<string> => {
+    if (contractId.startsWith('C_MOCK_')) {
+      console.log(`[Stellar] Mock deposit release for contract: ${contractId}`);
+      return 'tx_mock_hash_release_' + Math.random().toString(36).substring(2, 15);
+    }
+    const admin = getAdminKeypair();
+    const contract = new Contract(contractId);
+    const account = await rpc.getAccount(admin.publicKey());
+
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase })
+      .addOperation(contract.call('release_deposit'))
+      .setTimeout(30)
+      .build();
+
+    const prepared = await rpc.prepareTransaction(tx);
+    prepared.sign(admin);
+    const result = await rpc.sendTransaction(prepared);
+
+    console.log(`[Stellar] release_deposit tx: ${result.hash}`);
+    return result.hash;
+  },
+
+  /**
+   * Call set_grace_days() — landlord adjusts grace window (1–7 days) on an active lease.
+   */
+  setGraceDays: async (contractId: string, days: number): Promise<string> => {
+    if (contractId.startsWith('C_MOCK_')) {
+      console.log(`[Stellar] Mock set_grace_days(${days}) for contract: ${contractId}`);
+      return 'tx_mock_hash_grace_' + Math.random().toString(36).substring(2, 15);
+    }
+    const admin = getAdminKeypair();
+    const contract = new Contract(contractId);
+    const account = await rpc.getAccount(admin.publicKey());
+
+    const tx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase })
+      .addOperation(contract.call('set_grace_days', nativeToScVal(days, { type: 'u32' })))
+      .setTimeout(30)
+      .build();
+
+    const prepared = await rpc.prepareTransaction(tx);
+    prepared.sign(admin);
+    const result = await rpc.sendTransaction(prepared);
+    console.log(`[Stellar] set_grace_days tx: ${result.hash}`);
+    return result.hash;
+  },
+
+  /**
+   * Query is_in_grace_period() and days_overdue() — view calls, no signing.
+   */
+  getGracePeriodStatus: async (contractId: string): Promise<{ inGrace: boolean; daysOverdue: number }> => {
+    if (contractId.startsWith('C_MOCK_')) {
+      return { inGrace: false, daysOverdue: 0 };
+    }
+    const admin = getAdminKeypair();
+    const contract = new Contract(contractId);
+    const account = await rpc.getAccount(admin.publicKey());
+
+    const graceTx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase })
+      .addOperation(contract.call('is_in_grace_period'))
+      .setTimeout(30)
+      .build();
+    const graceResult = await rpc.simulateTransaction(graceTx);
+    const inGrace = SorobanRpc.Api.isSimulationSuccess(graceResult) && graceResult.result
+      ? Boolean(scValToNative(graceResult.result.retval))
+      : false;
+
+    const overdueTx = new TransactionBuilder(account, { fee: BASE_FEE, networkPassphrase })
+      .addOperation(contract.call('days_overdue'))
+      .setTimeout(30)
+      .build();
+    const overdueResult = await rpc.simulateTransaction(overdueTx);
+    const daysOverdue = SorobanRpc.Api.isSimulationSuccess(overdueResult) && overdueResult.result
+      ? Number(scValToNative(overdueResult.result.retval))
+      : 0;
+
+    return { inGrace, daysOverdue };
   },
 
   /**
