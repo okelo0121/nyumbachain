@@ -6,14 +6,17 @@ import { Keypair } from '@stellar/stellar-sdk';
 import { User } from '../models/user.model';
 import { encrypt } from '../utils/crypto';
 import { AuthenticatedRequest } from '../middleware/auth';
+import { stellarService } from '../services/stellar.service';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretaccesskey123!';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'supersecretrefreshkey456!';
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const COOKIE_OPTIONS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'lax' as const,
+  secure: isProduction,
+  sameSite: (isProduction ? 'none' : 'lax') as 'none' | 'lax',
 };
 
 const REFRESH_COOKIE_OPTIONS = {
@@ -100,6 +103,13 @@ export const register = async (req: Request, res: Response) => {
 
     // Set refresh token cookie
     res.cookie('refreshToken', refreshToken, REFRESH_COOKIE_OPTIONS);
+
+    // Activate the tenant's Stellar wallet on-chain (non-blocking — never fails registration)
+    if (newUser.stellar_wallet) {
+      stellarService.setupTenantWallet(newUser.stellar_wallet).catch((err) => {
+        console.error('[Stellar] Wallet activation failed (non-fatal):', err);
+      });
+    }
 
     // Exclude password and encrypted keys in response
     const userResponse = toUserResponse(newUser);
@@ -188,15 +198,13 @@ export const me = async (req: AuthenticatedRequest, res: Response) => {
       return res.status(401).json({ error: 'Not authenticated.' });
     }
 
-    const user = await User.findByPk(req.user.id, {
-      attributes: { exclude: ['password_hash', 'stellar_wallet_secret_encrypted'] },
-    });
+    const user = await User.findByPk(req.user.id);
 
     if (!user) {
       return res.status(404).json({ error: 'User not found.' });
     }
 
-    return res.json(user);
+    return res.json(toUserResponse(user));
   } catch (error) {
     console.error('Get profile error:', error);
     return res.status(500).json({ error: 'Server error retrieving profile.' });

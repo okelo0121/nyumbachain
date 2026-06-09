@@ -20,6 +20,9 @@ export default function TenantWallet() {
     const queryClient = useQueryClient();
     const [copied, setCopied] = useState(false);
     const [fundingError, setFundingError] = useState<string | null>(null);
+    const [escrowAmount, setEscrowAmount] = useState('');
+    const [escrowError, setEscrowError] = useState<string | null>(null);
+    const [mintError, setMintError] = useState<string | null>(null);
 
     const formattedWallet = user?.stellar_wallet 
         ? `${user.stellar_wallet.slice(0, 6)}...${user.stellar_wallet.slice(-6)}` 
@@ -63,7 +66,40 @@ export default function TenantWallet() {
         retry: false,
     });
 
-    // 5. Friendbot funding mutation (for development and testnet activation)
+    // 5. Fund escrow mutation — calls backend which uses fee-bump (tenant pays zero XLM)
+    const escrowMutation = useMutation({
+        mutationFn: async () => {
+            if (!tenancy?.id || !escrowAmount) return;
+            setEscrowError(null);
+            await api.post(`/tenancies/${tenancy.id}/fund-escrow`, {
+                amount_usdc: parseFloat(escrowAmount),
+            });
+        },
+        onSuccess: () => {
+            setEscrowAmount('');
+            queryClient.invalidateQueries({ queryKey: ['escrowBalance', tenancy?.id] });
+            queryClient.invalidateQueries({ queryKey: ['payments', tenancy?.id] });
+        },
+        onError: (err: any) => {
+            setEscrowError(err.response?.data?.error || 'Failed to fund escrow. Try again.');
+        },
+    });
+
+    // 6. Mint test USDC from service account faucet (testnet only)
+    const mintMutation = useMutation({
+        mutationFn: async () => {
+            setMintError(null);
+            await api.post('/tenancies/mint-test-usdc', { amount_usdc: 2000 });
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['escrowBalance', tenancy?.id] });
+        },
+        onError: (err: any) => {
+            setMintError(err.response?.data?.error || 'Failed to get test USDC. Try again.');
+        },
+    });
+
+    // 7. Friendbot funding mutation (for development and testnet activation)
     const fundMutation = useMutation({
         mutationFn: async () => {
             if (!user?.stellar_wallet) return;
@@ -115,17 +151,31 @@ export default function TenantWallet() {
                                     <WalletCards className="h-9 w-9 text-white/80" />
                                 </div>
                                 <div className="mt-8 flex flex-wrap gap-3">
-                                    <button 
+                                    <button
                                         onClick={() => fundMutation.mutate()}
                                         disabled={fundMutation.isPending}
                                         className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-primary transition hover:-translate-y-0.5 disabled:opacity-50"
                                     >
                                         <ArrowDownLeft className="h-4 w-4" />
-                                        {fundMutation.isPending ? 'Funding (Friendbot)...' : 'Fund Testnet Wallet'}
+                                        {fundMutation.isPending ? 'Activating...' : 'Get Testnet XLM'}
+                                    </button>
+                                    <button
+                                        onClick={() => mintMutation.mutate()}
+                                        disabled={mintMutation.isPending}
+                                        className="inline-flex items-center justify-center gap-2 rounded-full bg-white/20 px-5 py-3 text-sm font-bold text-white transition hover:-translate-y-0.5 disabled:opacity-50"
+                                    >
+                                        <CircleDollarSign className="h-4 w-4" />
+                                        {mintMutation.isPending ? 'Sending...' : 'Get 2,000 Test USDC'}
                                     </button>
                                 </div>
                                 {fundingError && (
-                                    <p className="mt-2 text-xs font-semibold text-destructive">{fundingError}</p>
+                                    <p className="mt-2 text-xs font-semibold text-red-300">{fundingError}</p>
+                                )}
+                                {mintError && (
+                                    <p className="mt-2 text-xs font-semibold text-red-300">{mintError}</p>
+                                )}
+                                {mintMutation.isSuccess && (
+                                    <p className="mt-2 text-xs font-semibold text-green-300">2,000 test USDC sent to your wallet!</p>
                                 )}
                             </div>
                             <div className="grid gap-4 p-5 md:grid-cols-3">
@@ -153,19 +203,55 @@ export default function TenantWallet() {
                             </div>
                         </div>
 
-                        <div className="surface-card p-6">
-                            <h2 className="text-2xl font-bold">Funding address</h2>
-                            <p className="mt-2 text-sm text-muted-foreground">
-                                Transfer testnet funds to this custodial wallet address to fund your rent payments.
-                            </p>
-                            <div className="mt-5 rounded-[8px] bg-muted p-5">
-                                <div className="mt-5 flex items-center gap-2 rounded-full bg-white px-4 py-3">
+                        <div className="flex flex-col gap-6">
+                            {/* Fund Escrow */}
+                            {tenancy?.escrow_contract_id && (
+                                <div className="surface-card p-6">
+                                    <ShieldCheck className="mb-3 h-7 w-7 text-primary" />
+                                    <h2 className="text-xl font-bold">Fund Escrow</h2>
+                                    <p className="mt-1 text-sm text-muted-foreground">
+                                        Send USDC into your escrow contract. The backend pays the gas — you need no XLM.
+                                    </p>
+                                    <div className="mt-4 flex gap-2">
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            step="0.01"
+                                            className="field flex-1"
+                                            placeholder={`Min ${tenancy.monthly_rent_usdc} USDC`}
+                                            value={escrowAmount}
+                                            onChange={(e) => setEscrowAmount(e.target.value)}
+                                        />
+                                        <button
+                                            onClick={() => escrowMutation.mutate()}
+                                            disabled={escrowMutation.isPending || !escrowAmount}
+                                            className="primary-button shrink-0"
+                                        >
+                                            {escrowMutation.isPending ? 'Sending...' : 'Send'}
+                                        </button>
+                                    </div>
+                                    {escrowError && (
+                                        <p className="mt-2 text-xs font-semibold text-destructive">{escrowError}</p>
+                                    )}
+                                    {escrowMutation.isSuccess && (
+                                        <p className="mt-2 text-xs font-semibold text-success">Escrow funded successfully!</p>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Wallet address */}
+                            <div className="surface-card p-6">
+                                <h2 className="text-xl font-bold">Your wallet address</h2>
+                                <p className="mt-1 text-sm text-muted-foreground">
+                                    Your custodial Stellar wallet on testnet.
+                                </p>
+                                <div className="mt-4 flex items-center gap-2 rounded-[8px] bg-muted px-4 py-3">
                                     <span className="min-w-0 flex-1 truncate font-mono text-xs">
                                         {user?.stellar_wallet || 'Generating wallet...'}
                                     </span>
-                                    <button 
+                                    <button
                                         onClick={handleCopy}
-                                        className="rounded-full bg-primary/10 p-2 text-primary hover:bg-primary/20" 
+                                        className="rounded-full bg-primary/10 p-2 text-primary hover:bg-primary/20"
                                         type="button"
                                         title="Copy wallet address"
                                     >

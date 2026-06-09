@@ -12,6 +12,8 @@ import {
   claimDeposit,
   releaseDeposit,
   setGraceDays,
+  fundEscrow,
+  mintTestUsdc,
   createApplicationSchema,
   setGraceDaysSchema,
 } from '../controllers/tenancy.controller';
@@ -97,5 +99,11 @@ tenancyRouter.put(
   validateRequest(setGraceDaysSchema),
   setGraceDays
 );
+
+// Tenant: fund escrow contract with USDC (admin pays gas via fee bump)
+tenancyRouter.post('/:id/fund-escrow', authenticateJWT, authorizeRoles('tenant'), fundEscrow);
+
+// Tenant: get test USDC from service account faucet (testnet only)
+tenancyRouter.post('/mint-test-usdc', authenticateJWT, authorizeRoles('tenant'), mintTestUsdc);
 
 export { applicationRouter, tenancyRouter };

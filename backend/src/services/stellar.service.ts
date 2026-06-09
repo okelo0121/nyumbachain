@@ -4,6 +4,7 @@ import {
   Operation,
   BASE_FEE,
   SorobanRpc,
+  Horizon,
   Contract,
   nativeToScVal,
   scValToNative,
@@ -20,6 +21,13 @@ const USDC_CONTRACT = process.env.USDC_CONTRACT_ADDRESS || '';
 const networkPassphrase = NETWORK === 'mainnet' ? Networks.PUBLIC : Networks.TESTNET;
 
 const rpc = new SorobanRpc.Server(RPC_URL, { allowHttp: false });
+
+// Horizon handles classic operations (createAccount, payments, trustlines)
+const horizon = new Horizon.Server(
+  NETWORK === 'mainnet'
+    ? 'https://horizon.stellar.org'
+    : 'https://horizon-testnet.stellar.org'
+);
 
 const getAdminKeypair = (): Keypair => {
   const secret = process.env.STELLAR_SERVICE_SECRET;
@@ -48,10 +56,10 @@ export const stellarService = {
     paymentDay: number;
   }): Promise<DeployResult> => {
     const admin = getAdminKeypair();
-    const wasmPath = path.join(
-      __dirname,
-      '../../../contracts/target/wasm32-unknown-unknown/release/nyumbachain_escrow.wasm'
-    );
+    // Prefer the optimized WASM (smaller = cheaper gas). Fall back to unoptimized dev build.
+    const optimizedPath = path.join(__dirname, '../../../contracts/target/nyumbachain_escrow.optimized.wasm');
+    const unoptimizedPath = path.join(__dirname, '../../../contracts/target/wasm32-unknown-unknown/release/nyumbachain_escrow.wasm');
+    const wasmPath = fs.existsSync(optimizedPath) ? optimizedPath : unoptimizedPath;
 
     if (!fs.existsSync(wasmPath)) {
       console.warn(`[Stellar] WARNING: Contract WASM not found at: ${wasmPath}. Falling back to mock contract deployment.`);
@@ -337,6 +345,155 @@ export const stellarService = {
       : 0;
 
     return { inGrace, daysOverdue };
+  },
+
+  /**
+   * Call deposit_funds() on behalf of the tenant using a fee-bump transaction.
+   *
+   * deposit_funds() has `tenant.require_auth()` in the contract, so the tenant's
+   * keypair must sign. But tenants may have no XLM for fees. The fee-bump pattern
+   * lets the admin keypair wrap the tenant's inner tx and pay all fees —
+   * tenant contributes zero XLM.
+   *
+   *   [Fee Bump Tx]  ← admin signs, pays all XLM fees
+   *     └── [Inner Tx] ← tenant signs, satisfies require_auth in contract
+   */
+  depositFunds: async (params: {
+    contractId: string;
+    tenantSecret: string;  // decrypted from stellar_wallet_secret_encrypted
+    amountUsdc: number;
+  }): Promise<string> => {
+    const { contractId, tenantSecret, amountUsdc } = params;
+
+    if (contractId.startsWith('C_MOCK_')) {
+      console.log(`[Stellar] Mock deposit for contract: ${contractId}`);
+      return 'tx_mock_hash_deposit_' + Math.random().toString(36).substring(2, 15);
+    }
+
+    const admin = getAdminKeypair();
+    const tenantKeypair = Keypair.fromSecret(tenantSecret);
+    const contract = new Contract(contractId);
+
+    // Inner tx: tenant is source so require_auth is satisfied
+    const tenantAccount = await rpc.getAccount(tenantKeypair.publicKey());
+    const innerTx = new TransactionBuilder(tenantAccount, {
+      fee: BASE_FEE,
+      networkPassphrase,
+    })
+      .addOperation(
+        contract.call('deposit_funds', nativeToScVal(toStroops(amountUsdc), { type: 'i128' }))
+      )
+      .setTimeout(30)
+      .build();
+
+    // Simulate so Soroban populates auth entries
+    const simResult = await rpc.simulateTransaction(innerTx);
+    if (!SorobanRpc.Api.isSimulationSuccess(simResult)) {
+      throw new Error(`deposit_funds simulation failed: ${JSON.stringify(simResult)}`);
+    }
+    const assembled = SorobanRpc.assembleTransaction(innerTx, simResult).build();
+    assembled.sign(tenantKeypair);
+
+    // Fee bump: admin wraps inner tx and pays all XLM fees
+    const feeBump = TransactionBuilder.buildFeeBumpTransaction(
+      admin.publicKey(),
+      String(parseInt(BASE_FEE) * 10),
+      assembled,
+      networkPassphrase
+    );
+    feeBump.sign(admin);
+
+    const txResponse = await rpc.sendTransaction(feeBump);
+    await waitForTx(txResponse.hash);
+
+    console.log(`[Stellar] deposit_funds tx: ${txResponse.hash}`);
+    return txResponse.hash;
+  },
+
+  /**
+   * Activate a tenant's Stellar account after registration.
+   * Every Stellar account must receive at least 1 XLM before it exists
+   * on-chain. The service account pays this automatically so the tenant
+   * never has to worry about it.
+   * Called non-blocking after registration — failure is logged, not fatal.
+   */
+  setupTenantWallet: async (tenantPublicKey: string): Promise<void> => {
+    const admin = getAdminKeypair();
+
+    // Check if already activated — idempotent
+    try {
+      await horizon.loadAccount(tenantPublicKey);
+      console.log(`[Stellar] Wallet already active: ${tenantPublicKey}`);
+      return;
+    } catch {
+      // Account not found on network — proceed with creation
+    }
+
+    const adminAccount = await horizon.loadAccount(admin.publicKey());
+
+    const tx = new TransactionBuilder(adminAccount, {
+      fee: BASE_FEE,
+      networkPassphrase,
+    })
+      .addOperation(
+        Operation.createAccount({
+          destination: tenantPublicKey,
+          startingBalance: '2', // 2 XLM: 1 base reserve + 1 buffer for operations
+        })
+      )
+      .setTimeout(30)
+      .build();
+
+    tx.sign(admin);
+    await horizon.submitTransaction(tx);
+    console.log(`[Stellar] Activated tenant wallet: ${tenantPublicKey}`);
+  },
+
+  /**
+   * Send test USDC from the service account to a tenant's wallet.
+   * TESTNET ONLY — the service account acts as a faucet.
+   * In production, tenants acquire USDC via fiat on-ramp or external wallet.
+   */
+  mintTestUsdc: async (tenantPublicKey: string, amountUsdc: number): Promise<string> => {
+    if (NETWORK === 'mainnet') {
+      throw new Error('mintTestUsdc is not available on mainnet.');
+    }
+    if (!USDC_CONTRACT) {
+      throw new Error('USDC_CONTRACT_ADDRESS is not set.');
+    }
+
+    const admin = getAdminKeypair();
+    const contract = new Contract(USDC_CONTRACT);
+    const adminAccount = await rpc.getAccount(admin.publicKey());
+
+    // Call transfer(from=admin, to=tenant, amount) on the USDC Soroban contract
+    const tx = new TransactionBuilder(adminAccount, {
+      fee: BASE_FEE,
+      networkPassphrase,
+    })
+      .addOperation(
+        contract.call(
+          'transfer',
+          Address.fromString(admin.publicKey()).toScVal(),
+          Address.fromString(tenantPublicKey).toScVal(),
+          nativeToScVal(toStroops(amountUsdc), { type: 'i128' })
+        )
+      )
+      .setTimeout(30)
+      .build();
+
+    const simResult = await rpc.simulateTransaction(tx);
+    if (!SorobanRpc.Api.isSimulationSuccess(simResult)) {
+      throw new Error(`mintTestUsdc simulation failed: ${JSON.stringify(simResult)}`);
+    }
+    const assembled = SorobanRpc.assembleTransaction(tx, simResult).build();
+    assembled.sign(admin);
+
+    const txResponse = await rpc.sendTransaction(assembled);
+    await waitForTx(txResponse.hash);
+
+    console.log(`[Stellar] Minted ${amountUsdc} test USDC → ${tenantPublicKey}`);
+    return txResponse.hash;
   },
 
   /**

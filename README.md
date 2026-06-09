@@ -178,7 +178,61 @@ stellar contract deploy --wasm target/wasm32-unknown-unknown/release/nyumbachain
 ## 🌍 Live Demo (Testnet)
 
 - **Frontend:** https://nyumbachain.vercel.app
-- **Testnet contract:** https://stellar.expert/explorer/testnet/contract/REPLACE_WITH_DEPLOYED_ID
+- **Service account:** [`GBMEIKTNFKWEMSAWM7Z7DOZFOXRUXVSZHZEY6PBDBTXMG7ZKLCJUZVUU`](https://stellar.expert/explorer/testnet/account/GBMEIKTNFKWEMSAWM7Z7DOZFOXRUXVSZHZEY6PBDBTXMG7ZKLCJUZVUU)
+- **USDC contract (testnet):** [`CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`](https://stellar.expert/explorer/testnet/contract/CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA)
+- **Escrow contracts:** deployed per-tenancy — each approved lease creates a new contract instance on-chain. Browse live instances via the service account link above.
+
+---
+
+## 📦 Smart Contract Deployment
+
+NyumbaChain uses a **one contract per tenancy** model. There is no single pre-deployed master contract. Every time a landlord approves a rental application, the backend:
+
+1. Uploads the compiled WASM to Stellar testnet (if not already cached)
+2. Creates a new contract instance from that WASM
+3. Calls `initialize()` with this tenancy's specific values — landlord address, tenant address, monthly rent, deposit, and payment day
+4. Stores the resulting contract ID in the database as `escrow_contract_id`
+
+This means each tenant's deposit is **isolated in its own contract** — a bug or dispute in one tenancy cannot affect any other.
+
+### Contract WASM
+
+| Item | Value |
+|---|---|
+| Language | Rust → WASM (Soroban SDK v21) |
+| Source | `contracts/src/` |
+| Compiled WASM | `contracts/target/wasm32-unknown-unknown/release/nyumbachain_escrow.wasm` |
+| Optimized WASM | Run `make optimize` in `contracts/` to produce `.optimized.wasm` |
+
+### Deployed escrow contract functions
+
+| Function | Caller | Description |
+|---|---|---|
+| `initialize()` | Backend (on approval) | Sets landlord, tenant, rent, deposit, payment day |
+| `deposit_funds(amount)` | Tenant (via backend fee-bump) | Tenant sends USDC into escrow |
+| `execute_payment()` | Backend cron (daily) | Releases rent from escrow to landlord |
+| `terminate()` | Backend (landlord triggers) | Marks lease ended, starts 7-day inspection |
+| `release_deposit()` | Backend (landlord triggers) | Returns deposit to tenant after inspection |
+| `claim_deposit(reason)` | Backend (landlord triggers) | Sends deposit to landlord, records reason on-chain |
+| `get_balance()` | Anyone (view) | Returns current USDC balance in escrow |
+| `get_payment_history()` | Anyone (view) | Returns last 24 payment records |
+
+### Service account setup (testnet)
+
+The backend signs all contract transactions using `STELLAR_SERVICE_SECRET`. This account must be funded before contracts can be deployed:
+
+```bash
+# 1. Fund with testnet XLM (one time)
+curl "https://friendbot.stellar.org/?addr=GBMEIKTNFKWEMSAWM7Z7DOZFOXRUXVSZHZEY6PBDBTXMG7ZKLCJUZVUU"
+
+# 2. Build and optimize the contract WASM
+cd contracts && make optimize
+
+# 3. Start the backend — contracts deploy automatically on lease approval
+cd ../backend && npm run dev
+```
+
+> The service account also acts as a testnet USDC faucet. Tenants can click **"Get 2,000 Test USDC"** in the wallet UI to receive test funds for the demo.
 
 ---
 

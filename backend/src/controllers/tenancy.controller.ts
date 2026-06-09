@@ -177,7 +177,7 @@ export const approveApplication = async (req: AuthenticatedRequest, res: Respons
   try {
 
     const { id } = req.params;
-    const { payment_day, start_date } = req.body;
+    const { payment_day, start_date, monthly_rent_usdc, deposit_usdc } = req.body;
 
     const application = await Application.findByPk(id, {
       include: [
@@ -230,8 +230,8 @@ export const approveApplication = async (req: AuthenticatedRequest, res: Respons
         landlord_id: req.user.id,
         start_date: start_date ? new Date(start_date) : new Date(),
         payment_day: payment_day || 1,
-        monthly_rent_usdc: unit.monthly_rent_usdc,
-        deposit_usdc: unit.deposit_usdc,
+        monthly_rent_usdc: monthly_rent_usdc ?? unit.monthly_rent_usdc,
+        deposit_usdc: deposit_usdc ?? unit.deposit_usdc,
         status: 'active',
       },
       { transaction: t }
@@ -251,8 +251,8 @@ export const approveApplication = async (req: AuthenticatedRequest, res: Respons
       const result = await stellarService.deployEscrowContract({
         landlordKey: landlordUser?.stellar_wallet || '',
         tenantKey: tenant.stellar_wallet || '',
-        monthlyRentUsdc: unit.monthly_rent_usdc,
-        depositUsdc: unit.deposit_usdc,
+        monthlyRentUsdc: monthly_rent_usdc ?? unit.monthly_rent_usdc,
+        depositUsdc: deposit_usdc ?? unit.deposit_usdc,
         paymentDay: payment_day || 1,
       });
 
@@ -651,5 +651,104 @@ export const setGraceDays = async (req: AuthenticatedRequest, res: Response) => 
   } catch (error) {
     console.error('Set grace days error:', error);
     return res.status(500).json({ error: 'Server error updating grace days.' });
+  }
+};
+
+/**
+ * POST /api/tenancies/:id/fund-escrow
+ * Tenant sends USDC into the escrow contract.
+ * Uses a fee-bump transaction — the admin keypair pays XLM fees on the
+ * tenant's behalf so the tenant never needs XLM in their wallet.
+ */
+export const fundEscrow = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
+
+    const { id } = req.params;
+    const { amount_usdc } = req.body;
+
+    if (!amount_usdc || amount_usdc <= 0) {
+      return res.status(400).json({ error: 'amount_usdc must be a positive number.' });
+    }
+
+    const tenancy = await Tenancy.findByPk(id);
+    if (!tenancy || tenancy.tenant_id !== req.user.id) {
+      return res.status(404).json({ error: 'Tenancy not found or unauthorized.' });
+    }
+    if (tenancy.status !== 'active') {
+      return res.status(400).json({ error: 'Tenancy is not active.' });
+    }
+    if (!tenancy.escrow_contract_id) {
+      return res.status(400).json({ error: 'Escrow contract not yet deployed.' });
+    }
+
+    // Fetch the tenant's encrypted secret key (custodial wallet)
+    const tenant = await User.findByPk(req.user.id, {
+      attributes: ['stellar_wallet_secret_encrypted'],
+    });
+    if (!tenant?.stellar_wallet_secret_encrypted) {
+      return res.status(400).json({ error: 'No custodial wallet found for this tenant.' });
+    }
+
+    // Decrypt secret — backend decrypts, never exposed to frontend
+    const { decrypt } = await import('../utils/crypto');
+    const tenantSecret = decrypt(tenant.stellar_wallet_secret_encrypted);
+
+    const txHash = await stellarService.depositFunds({
+      contractId: tenancy.escrow_contract_id,
+      tenantSecret,
+      amountUsdc: amount_usdc,
+    });
+
+    // Record the deposit in payment history
+    await Payment.create({
+      tenancy_id: tenancy.id!,
+      amount_usdc,
+      payment_type: 'deposit',
+      status: 'executed',
+      stellar_tx_hash: txHash,
+      due_date: new Date(),
+      executed_at: new Date(),
+    });
+
+    return res.json({ message: 'Escrow funded successfully.', tx_hash: txHash, amount_usdc });
+  } catch (error) {
+    console.error('Fund escrow error:', error);
+    return res.status(500).json({ error: 'Server error funding escrow.' });
+  }
+};
+
+/**
+ * POST /api/tenancies/mint-test-usdc
+ * TESTNET ONLY — sends test USDC from the service account to the tenant's wallet.
+ * This simulates a fiat on-ramp so the tenant can demo the full payment flow
+ * without needing a real crypto wallet or on-ramp integration.
+ */
+export const mintTestUsdc = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    if (!req.user) return res.status(401).json({ error: 'Unauthorized.' });
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ error: 'Test USDC minting is only available on testnet.' });
+    }
+
+    const { amount_usdc = 2000 } = req.body; // default 2000 USDC for demo
+
+    const tenant = await User.findByPk(req.user.id, {
+      attributes: ['stellar_wallet'],
+    });
+    if (!tenant?.stellar_wallet) {
+      return res.status(400).json({ error: 'No Stellar wallet found for this account.' });
+    }
+
+    const txHash = await stellarService.mintTestUsdc(tenant.stellar_wallet, amount_usdc);
+
+    return res.json({
+      message: `${amount_usdc} test USDC sent to your wallet.`,
+      tx_hash: txHash,
+      amount_usdc,
+    });
+  } catch (error) {
+    console.error('Mint test USDC error:', error);
+    return res.status(500).json({ error: 'Server error minting test USDC.' });
   }
 };
