@@ -180,7 +180,7 @@ stellar contract deploy --wasm target/wasm32-unknown-unknown/release/nyumbachain
 - **Frontend:** https://nyumbachain.vercel.app
 - **Service account:** [`GBMEIKTNFKWEMSAWM7Z7DOZFOXRUXVSZHZEY6PBDBTXMG7ZKLCJUZVUU`](https://stellar.expert/explorer/testnet/account/GBMEIKTNFKWEMSAWM7Z7DOZFOXRUXVSZHZEY6PBDBTXMG7ZKLCJUZVUU)
 - **USDC contract (testnet):** [`CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA`](https://stellar.expert/explorer/testnet/contract/CBIELTK6YBZJU5UP2WWQEUCYKLPU6AUNZ2BQ4WWFEIE3USCIHMXQDAMA)
-- **Escrow contracts:** deployed per-tenancy — each approved lease creates a new contract instance on-chain. Browse live instances via the service account link above.
+- **Escrow contracts:** there is no single deployed contract ID. A new contract instance is deployed automatically each time a landlord approves a lease. The resulting contract ID is stored in the database and visible in the tenant dashboard under "Escrow Deployed".
 
 ---
 
