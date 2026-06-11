@@ -258,6 +258,19 @@ cd ../backend && npm run dev
 - The `STELLAR_SERVICE_SECRET` is rotated by revoking and re-issuing on any leak.
 
 ---
+---
+
+## 🧰 Great team behind this
+
+| Name   | Role                                                               |
+|----------|----------------------------------------------------------------------|
+| Okelo Ulak Angelo | Backend |
+| Quinter Ochieng  | Smart Contract |
+| Mudanyi Javan | Frontend|
+| Melkamu Wako   | Designer |
+| Haileyesus Kebede   | Designer |
+
+---
 
 ## 📜 License
 
